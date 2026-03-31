@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+body {
+  font-family: var(--font-poppins);
+  min-height: 100vh;
+}
+
+/* hide Jitsi watermark in iframe */
+iframe {
+  --watermark-display: none !important;
+}
+
+.jitsi-watermark,
+#watermark {
+  display: none !important;
+}
