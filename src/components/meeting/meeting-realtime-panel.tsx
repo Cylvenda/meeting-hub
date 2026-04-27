@@ -1,23 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import type { ReactNode } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   LiveKitRoom,
   PreJoin,
-  RoomAudioRenderer,
-  VideoConference,
   type LocalUserChoices,
 } from "@livekit/components-react"
 import type { RealtimeConnection } from "@/store/meeting/meeting.types"
 import { Button } from "@/components/ui/button"
+import { MeetingRoom } from "@/components/meeting-room/MeetingRoom"
+import type { AgendaItem, AttendanceRecord, ParticipantSession } from "@/store/meeting/meeting.types"
 
 type MeetingRealtimePanelProps = {
   meetingId?: string
+  meetingTitle?: string
   meetingStatus?: string
+  fullscreen?: boolean
   connection: RealtimeConnection | null
   userEmail?: string
+  userId?: string
+  userName?: string
+  hostIdentity?: string
+  hostEmail?: string
+  agendaItems?: AgendaItem[]
+  minutesContent?: string | null
+  attendance?: AttendanceRecord[]
+  participants?: ParticipantSession[]
   loading?: boolean
-  onRequestToken: () => Promise<void> | void
+  headerActions?: ReactNode
+  onRequestToken: () => Promise<boolean> | boolean
+  onLeaveRequested?: () => Promise<void> | void
   onDisconnected?: () => Promise<void> | void
   onConnected?: () => Promise<void> | void
   onError?: (message: string) => void
@@ -25,11 +38,23 @@ type MeetingRealtimePanelProps = {
 }
 
 export function MeetingRealtimePanel({
+  meetingTitle,
   meetingStatus,
+  fullscreen = false,
   connection,
   userEmail,
+  userId,
+  userName,
+  hostIdentity,
+  hostEmail,
+  agendaItems = [],
+  minutesContent,
+  attendance = [],
+  participants = [],
   loading = false,
+  headerActions,
   onRequestToken,
+  onLeaveRequested,
   onDisconnected,
   onConnected,
   onError,
@@ -44,35 +69,70 @@ export function MeetingRealtimePanel({
   })
   const [roomPhase, setRoomPhase] = useState<"setup" | "connecting" | "connected" | "reconnecting" | "failed">("setup")
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null)
+  const tokenRequestInFlightRef = useRef(false)
 
   const liveKitUrl = connection?.url || process.env.NEXT_PUBLIC_LIVEKIT_URL
   const canConnect = Boolean(connection?.token && liveKitUrl)
-  const preJoinDefaults =
-    userEmail && userChoices.username !== userEmail
-      ? {
-          ...userChoices,
-          username: userEmail,
-        }
-      : userChoices
+  const preJoinDefaults = useMemo(
+    () =>
+      userEmail && userChoices.username !== userEmail
+        ? {
+            ...userChoices,
+            username: userEmail,
+          }
+        : userChoices,
+    [userChoices, userEmail]
+  )
 
-  const audio =
-    userChoices.audioEnabled
-      ? {
-          deviceId: userChoices.audioDeviceId === "default" ? undefined : userChoices.audioDeviceId,
-        }
-      : false
+  const audio = useMemo(
+    () =>
+      userChoices.audioEnabled
+        ? {
+            deviceId: userChoices.audioDeviceId === "default" ? undefined : userChoices.audioDeviceId,
+          }
+        : false,
+    [userChoices.audioDeviceId, userChoices.audioEnabled]
+  )
 
-  const video =
-    userChoices.videoEnabled
-      ? {
-          deviceId: userChoices.videoDeviceId === "default" ? undefined : userChoices.videoDeviceId,
-        }
-      : false
+  const video = useMemo(
+    () =>
+      userChoices.videoEnabled
+        ? {
+            deviceId: userChoices.videoDeviceId === "default" ? undefined : userChoices.videoDeviceId,
+          }
+        : false,
+    [userChoices.videoDeviceId, userChoices.videoEnabled]
+  )
+
+  const roomKey = connection?.token && liveKitUrl ? `${liveKitUrl}:${connection.room}:${connection.token}` : "no-room"
+
+  const requestToken = async (phase: "connecting" | "reconnecting", message: string) => {
+    if (tokenRequestInFlightRef.current) {
+      return
+    }
+
+    tokenRequestInFlightRef.current = true
+    setConnectionMessage(message)
+    setRoomPhase(phase)
+    onResetConnection?.()
+
+    try {
+      const success = await onRequestToken()
+
+      if (!success) {
+        setRoomPhase("failed")
+        setConnectionMessage("We could not get a valid meeting token. Review your setup and try again.")
+      }
+    } finally {
+      tokenRequestInFlightRef.current = false
+    }
+  }
 
   const handleReconnect = () => {
-    setConnectionMessage("Requesting a fresh token and reconnecting to the room...")
-    setRoomPhase("reconnecting")
-    void onRequestToken()
+    void requestToken(
+      "reconnecting",
+      "Requesting a fresh token and reconnecting to the room..."
+    )
   }
 
   const handleBackToSetup = () => {
@@ -83,52 +143,88 @@ export function MeetingRealtimePanel({
 
   if (meetingStatus !== "ongoing") {
     return (
-      <div className="flex h-fit items-center justify-center rounded-2xl border border-dashed border-border bg-muted text-center text-sm text-muted-foreground">
+      <div className="flex min-h-[18rem] items-center justify-center rounded-[28px] border border-dashed border-gray-200 bg-white text-center text-sm text-gray-500 shadow-sm">
         Start the meeting to open the Live room.
+      </div>
+    )
+  }
+
+  if ((roomPhase === "connecting" || roomPhase === "reconnecting") && !canConnect) {
+    return (
+      <div className={fullscreen ? "flex min-h-screen items-center justify-center bg-white p-6" : "rounded-[32px] border border-gray-200 bg-white p-6 shadow-sm"}>
+        <div className={fullscreen ? "w-full max-w-3xl rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-6 py-10 text-center shadow-sm" : "rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-6 py-10 text-center"}>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">LiveKit</p>
+          <h2 className="mt-3 text-2xl font-semibold text-gray-900">
+            {roomPhase === "reconnecting" ? "Reconnecting to meeting room" : "Connecting to meeting room"}
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-600">
+            {connectionMessage || "Preparing your secure room connection and validating your selected media devices."}
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!canConnect || roomPhase === "setup") {
     return (
-      <div className="rounded-md border border-dashed border-border bg-muted/40 p-1">
-        <div className="rounded-md">
-              <PreJoin
-                key={userEmail || "meeting-prejoin"}
-                className="lk-prejoin-modern rounded-md"
-                defaults={preJoinDefaults}
-                joinLabel={loading ? "Joining..." : "Join Live Meeting"}
-                userLabel="Email"
-                persistUserChoices
-                onValidate={(values) => !loading && Boolean(values.username)}
-                onError={(error) => {
-                  setRoomPhase("setup")
-                  onError?.(error.message || "Unable to access your local media devices.")
-                }}
-                onSubmit={(values) => {
-                  setUserChoices({
-                    ...values,
-                    username: userEmail || values.username,
-                  })
-                  setConnectionMessage("Requesting a secure access token for the LiveKit room...")
-                  setRoomPhase("connecting")
-                  void onRequestToken()
-                }}
-              />
+      <div className={fullscreen ? "flex min-h-screen items-center justify-center bg-white p-6" : "rounded-[32px] border border-gray-200 bg-white p-3 shadow-sm"}>
+        <div className={fullscreen ? "w-full max-w-5xl rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4 shadow-sm" : "rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4"}>
+          {roomPhase === "failed" && connectionMessage ? (
+            <div className="mb-4 rounded-[24px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
+              {connectionMessage}
+            </div>
+          ) : null}
+
+          <div className="mb-4 rounded-[24px] border border-gray-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Device Check</p>
+            <h2 className="mt-2 text-2xl font-semibold text-gray-900">Prepare your camera and microphone</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+              Review your devices, confirm how you want to appear in the room, and then join the live meeting with a secure token.
+            </p>
+          </div>
+
+          <PreJoin
+            key={userEmail || "meeting-prejoin"}
+            className="lk-prejoin-modern rounded-md"
+            defaults={preJoinDefaults}
+            joinLabel={loading ? "Joining..." : "Join Live Meeting"}
+            userLabel="Email"
+            persistUserChoices
+            onValidate={(values) => !loading && Boolean(values.username)}
+            onError={(error) => {
+              setRoomPhase("setup")
+              onError?.(error.message || "Unable to access your local media devices.")
+            }}
+            onSubmit={async (values) => {
+              setUserChoices({
+                ...values,
+                username: userEmail || values.username,
+              })
+
+              await requestToken(
+                "connecting",
+                "Requesting a secure access token for the LiveKit room..."
+              )
+            }}
+          />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="relative h-150 overflow-hidden rounded-2xl border border-border bg-slate-950 shadow-xl" data-lk-theme="default">
+    <div
+      className={fullscreen ? "relative h-screen w-screen overflow-hidden bg-white" : "relative overflow-hidden rounded-[32px] border border-gray-200 bg-white shadow-sm"}
+      data-lk-theme="default"
+    >
       <LiveKitRoom
+        key={roomKey}
         audio={audio}
         video={video}
         connect
         token={connection?.token}
         serverUrl={liveKitUrl}
-        className="h-full w-full"
+        className={fullscreen ? "h-screen w-screen" : "h-full w-full"}
         onConnected={() => {
           setConnectionMessage(null)
           setRoomPhase("connected")
@@ -137,16 +233,31 @@ export function MeetingRealtimePanel({
         onDisconnected={() => {
           setConnectionMessage("The room connection was interrupted.")
           setRoomPhase("failed")
+          onResetConnection?.()
           void onDisconnected?.()
         }}
         onError={(error) => {
           setConnectionMessage(error.message || "Live Room failed to connect.")
           setRoomPhase("failed")
+          onResetConnection?.()
           onError?.(error.message || "Live Room failed to connect.")
         }}
       >
-        <VideoConference />
-        <RoomAudioRenderer />
+        <MeetingRoom
+          meetingTitle={meetingTitle || "Meeting room"}
+          agendaItems={agendaItems}
+          minutesContent={minutesContent}
+          attendanceRecords={attendance}
+          participantSessions={participants}
+          hostIdentity={hostIdentity}
+          hostEmail={hostEmail}
+          currentUserId={userId}
+          currentUserName={userName}
+          headerActions={headerActions}
+          onLeaveRequested={async () => {
+            await onLeaveRequested?.()
+          }}
+        />
       </LiveKitRoom>
 
       {roomPhase === "connecting" || roomPhase === "reconnecting" ? (
@@ -172,7 +283,7 @@ export function MeetingRealtimePanel({
               {connectionMessage || "The Live Room room disconnected unexpectedly."}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Button className="bg-chart-3 text-white" onClick={handleReconnect} disabled={loading}>
+              <Button onClick={handleReconnect} disabled={loading}>
                 Reconnect
               </Button>
               <Button variant="outline" onClick={handleBackToSetup}>

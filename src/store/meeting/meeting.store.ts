@@ -205,15 +205,11 @@ export const useMeetingStore = create<MeetingState>((set) => ({
     set({ loading: true, error: null })
     try {
       await meetingServices.leaveMeeting(meetingId)
-      const attendance = await meetingServices.getAttendance(meetingId)
-      const participants = await meetingServices.getParticipants(meetingId).catch(() => null)
       set({
-        attendance: attendance.data,
-        participants: participants?.data || [],
         realtimeConnection: null,
         loading: false,
       })
-      return { success: true, message: "Leave recorded. Disconnect the realtime client if it is still open." }
+      return { success: true, message: "Leave requested. Presence will finish updating after the LiveKit disconnect completes." }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to leave meeting"
       set({ loading: false, error: message })

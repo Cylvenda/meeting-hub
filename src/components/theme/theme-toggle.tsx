@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,6 +13,16 @@ interface ThemeToggleProps {
 
 export default function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
   const isDark = theme === "dark"
 
   return (
@@ -22,10 +33,22 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
         className
       )}
       onClick={toggleTheme}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={
+        !mounted
+          ? "Toggle theme"
+          : isDark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+      }
+      title={
+        !mounted
+          ? "Toggle theme"
+          : isDark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+      }
     >
-      {isDark ? <Sun /> : <Moon />}
+      {!mounted ? <Moon /> : isDark ? <Sun /> : <Moon />}
     </Button>
   )
 }

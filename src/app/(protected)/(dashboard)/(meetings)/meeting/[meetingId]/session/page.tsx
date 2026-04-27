@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { MeetingRealtimePanel } from "@/components/meeting/meeting-realtime-panel"
@@ -13,10 +13,12 @@ import { toast } from "react-toastify"
 
 export default function MeetingSessionPage() {
   const params = useParams<{ meetingId: string }>()
+  const router = useRouter()
   const meetingId = Array.isArray(params?.meetingId) ? params.meetingId[0] : params?.meetingId
   const { user } = useAuthUserStore()
   const {
     selectedMeeting,
+    currentMinutes,
     attendance,
     participants,
     realtimeConnection,
@@ -27,6 +29,7 @@ export default function MeetingSessionPage() {
     startMeeting,
     endMeeting,
     joinMeeting,
+    leaveMeeting,
     resetRealtimeConnection,
   } = useMeetingStore()
 
@@ -51,7 +54,9 @@ export default function MeetingSessionPage() {
   })
 
   const isHost = user?.email === selectedMeeting?.host_email
-  const isConnectedParticipant = participants.some((participant) => participant.user_email === user?.email)
+  const isMeetingOngoing = selectedMeeting?.status === "ongoing"
+  const activeParticipants = participants.filter((participant) => participant.left_at === null)
+  const isConnectedParticipant = activeParticipants.some((participant) => participant.user_email === user?.email)
   const detailsHref = meetingId ? `/meeting/${meetingId}` : "/dashboard"
 
   const handleStart = async () => {
@@ -77,13 +82,28 @@ export default function MeetingSessionPage() {
   }
 
   const handleJoin = async () => {
-    if (!meetingId) return
+    if (!meetingId) return false
     const result = await joinMeeting(meetingId)
     if (result.success) {
       toast.success(result.message)
+      return true
     } else {
       toast.error(result.message)
+      return false
     }
+  }
+
+  const handleLeaveRequested = async () => {
+    if (!meetingId) return
+
+    const result = await leaveMeeting(meetingId)
+    if (result.success) {
+      toast.success("You left the meeting room.")
+      router.push(detailsHref)
+      return
+    }
+
+    toast.error(result.message)
   }
 
   const handleRoomConnected = async () => {
@@ -99,9 +119,55 @@ export default function MeetingSessionPage() {
     toast.warning("Disconnected from the LiveKit room.")
   }
 
+  const roomHeaderActions = (
+    <>
+      <Button asChild variant="outline" size="lg" className="rounded-2xl px-4">
+        <Link href={detailsHref}>Meeting details</Link>
+      </Button>
+      {isHost && isMeetingOngoing ? (
+        <Button variant="destructive" size="lg" className="rounded-2xl px-4" onClick={handleEnd} disabled={loading}>
+          End Meeting
+        </Button>
+      ) : null}
+    </>
+  )
+
+  if (isMeetingOngoing) {
+    return (
+      <div className="fixed inset-0 z-40 bg-white">
+        <MeetingRealtimePanel
+          meetingId={meetingId}
+          meetingTitle={selectedMeeting?.title}
+          meetingStatus={selectedMeeting?.status}
+          fullscreen
+          connection={realtimeConnection}
+          userEmail={user?.email}
+          userId={user?.uuid}
+          userName={[user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email}
+          hostIdentity={selectedMeeting?.host}
+          hostEmail={selectedMeeting?.host_email}
+          agendaItems={selectedMeeting?.agenda_items || []}
+          minutesContent={currentMinutes?.content || selectedMeeting?.minutes?.content || null}
+          attendance={attendance}
+          participants={participants}
+          loading={loading}
+          headerActions={roomHeaderActions}
+          onRequestToken={handleJoin}
+          onLeaveRequested={handleLeaveRequested}
+          onConnected={handleRoomConnected}
+          onDisconnected={handleRoomDisconnected}
+          onError={(message) => {
+            toast.error(message)
+          }}
+          onResetConnection={resetRealtimeConnection}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-muted/40 p-4 md:p-6">
-      <div className="mx-auto grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="min-h-screen bg-white p-4 md:p-6">
+      <div className="mx-auto space-y-6">
         <div className="space-y-6">
           <Card className="border-none bg-card p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -125,16 +191,11 @@ export default function MeetingSessionPage() {
                     Start Meeting
                   </Button>
                 )}
-                {isHost && selectedMeeting?.status === "ongoing" && (
-                  <Button variant="destructive" onClick={handleEnd} disabled={loading}>
-                    End Meeting
-                  </Button>
-                )}
               </div>
             </div>
           </Card>
 
-          <Card className="border-none bg-card p-4">
+          <Card className="overflow-hidden border-none bg-transparent p-0 shadow-none">
             <div className="mb-6 text-center">
               <h3 className="mt-3 text-2xl font-semibold text-foreground">Check your camera and microphone</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -144,11 +205,22 @@ export default function MeetingSessionPage() {
 
             <MeetingRealtimePanel
               meetingId={meetingId}
+              meetingTitle={selectedMeeting?.title}
               meetingStatus={selectedMeeting?.status}
               connection={realtimeConnection}
               userEmail={user?.email}
+              userId={user?.uuid}
+              userName={[user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email}
+              hostIdentity={selectedMeeting?.host}
+              hostEmail={selectedMeeting?.host_email}
+              agendaItems={selectedMeeting?.agenda_items || []}
+              minutesContent={currentMinutes?.content || selectedMeeting?.minutes?.content || null}
+              attendance={attendance}
+              participants={participants}
               loading={loading}
+              headerActions={roomHeaderActions}
               onRequestToken={handleJoin}
+              onLeaveRequested={handleLeaveRequested}
               onConnected={handleRoomConnected}
               onDisconnected={handleRoomDisconnected}
               onError={(message) => {
@@ -159,7 +231,7 @@ export default function MeetingSessionPage() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-2">
           <Card className="border-none bg-card p-5">
             <h2 className="text-xl font-semibold">Attendance Tracking</h2>
             <p className="mt-1 text-sm text-muted-foreground">Backend attendance records for this live session.</p>
@@ -188,19 +260,19 @@ export default function MeetingSessionPage() {
 
           <Card className="border-none bg-card p-5">
             <h2 className="text-xl font-semibold">Participants</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Live participants reported by the backend webhook flow.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Currently active participants reported by the backend webhook flow.</p>
 
-            {selectedMeeting?.status === "ongoing" && (
+            {isMeetingOngoing && (
               <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 {isConnectedParticipant ? "You are currently reported as connected." : "You are not currently reported as connected."}
               </p>
             )}
 
             <div className="mt-4 space-y-2">
-              {participants.length === 0 && (
+              {activeParticipants.length === 0 && (
                 <p className="text-sm text-muted-foreground">No live participants detected yet.</p>
               )}
-              {participants.map((participant) => (
+              {activeParticipants.map((participant) => (
                 <div key={participant.id} className="rounded-xl bg-muted px-3 py-2 text-sm">
                   <p className="font-medium">{participant.user_email}</p>
                   <p className="text-xs text-muted-foreground">Joined at {new Date(participant.joined_at).toLocaleString()}</p>

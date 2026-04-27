@@ -35,7 +35,17 @@ const getInitialTheme = (): Theme => {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const [theme, setThemeState] = useState<Theme>("light")
+
+  useEffect(() => {
+    const initialTheme = getInitialTheme()
+    const frame = window.requestAnimationFrame(() => {
+      setThemeState(initialTheme)
+      applyTheme(initialTheme)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
 
   useEffect(() => {
     applyTheme(theme)

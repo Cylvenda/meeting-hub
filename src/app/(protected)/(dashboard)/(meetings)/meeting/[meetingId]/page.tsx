@@ -1,14 +1,16 @@
 "use client"
 
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { Clock3, LogIn, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useMeetingStore } from "@/store/meeting/meeting.store"
 import { useAuthUserStore } from "@/store/auth/userAuth.store"
 import { toast } from "react-toastify"
+import type { AttendanceRecord, ParticipantSession } from "@/store/meeting/meeting.types"
 
 export default function MeetingPage() {
   const params = useParams<{ meetingId: string }>()
@@ -16,9 +18,13 @@ export default function MeetingPage() {
   const { user } = useAuthUserStore()
   const {
     selectedMeeting,
+    attendance,
+    participants,
     currentMinutes,
     loading,
     fetchMeetingById,
+    fetchAttendance,
+    fetchParticipants,
     saveMinutes,
     addAgendaItem,
     removeAgendaItem,
@@ -32,8 +38,14 @@ export default function MeetingPage() {
   useEffect(() => {
     if (!meetingId) return
 
-    void fetchMeetingById(meetingId)
-  }, [meetingId, fetchMeetingById])
+    const load = async () => {
+      await fetchMeetingById(meetingId)
+      await fetchAttendance(meetingId)
+      await fetchParticipants(meetingId)
+    }
+
+    void load()
+  }, [meetingId, fetchAttendance, fetchMeetingById, fetchParticipants])
 
   const isHost = user?.email === selectedMeeting?.host_email
   const minutesContent = minutesDraft ?? currentMinutes?.content ?? ""
@@ -44,6 +56,55 @@ export default function MeetingPage() {
   const scheduledEnd = selectedMeeting?.scheduled_end
     ? new Date(selectedMeeting.scheduled_end).toLocaleString()
     : "No end time"
+
+  const attendanceHistory = useMemo(() => {
+    const sessionsByUser = new Map<string, ParticipantSession[]>()
+
+    participants.forEach((session) => {
+      const existing = sessionsByUser.get(session.user) || []
+      existing.push(session)
+      sessionsByUser.set(session.user, existing)
+    })
+
+    return attendance
+      .map((record: AttendanceRecord) => {
+        const userSessions = (sessionsByUser.get(record.user) || []).sort(
+          (left, right) => new Date(right.joined_at).getTime() - new Date(left.joined_at).getTime()
+        )
+
+        return {
+          id: record.user,
+          email: record.user_email,
+          joinedAt: record.first_joined_at,
+          lastLeftAt: record.last_left_at,
+          totalDurationMinutes: record.total_duration_minutes,
+          status: record.status,
+          isVerifiedMember: record.is_verified_member,
+          joinCount: userSessions.length,
+          sessions: userSessions,
+        }
+      })
+      .sort((left, right) => {
+        if (left.totalDurationMinutes !== right.totalDurationMinutes) {
+          return right.totalDurationMinutes - left.totalDurationMinutes
+        }
+
+        return left.email.localeCompare(right.email)
+      })
+  }, [attendance, participants])
+
+  const formatHistoryDateTime = (value: string | null) => {
+    if (!value) {
+      return "Not available"
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(value))
+  }
 
   const handleMinutesSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -113,13 +174,13 @@ export default function MeetingPage() {
 
               <div className="flex flex-wrap gap-2">
                 {meetingId ? (
-                  <Button asChild className="bg-chart-3">
+                  <Button asChild>
                     <Link href={sessionHref}>
                       {selectedMeeting?.status === "ongoing" ? "Join Session" : "Open Session"}
                     </Link>
                   </Button>
                 ) : (
-                  <Button className="bg-chart-3" disabled>
+                  <Button disabled>
                     Open Session
                   </Button>
                 )}
@@ -155,7 +216,7 @@ export default function MeetingPage() {
                     onChange={(event) => setAgendaMinutes(event.target.value)}
                     placeholder="Allocated minutes"
                   />
-                  <Button type="submit" className="bg-chart-3" disabled={loading}>
+                  <Button type="submit" disabled={loading}>
                     Add Agenda Item
                   </Button>
                 </form>
@@ -202,7 +263,7 @@ export default function MeetingPage() {
                     className="min-h-56 w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     placeholder="Write your meeting minutes here..."
                   />
-                  <Button type="submit" className="bg-chart-3" disabled={loading}>
+                  <Button type="submit" disabled={loading}>
                     Save Minutes
                   </Button>
                 </form>
@@ -213,6 +274,84 @@ export default function MeetingPage() {
               )}
             </Card>
           </div>
+
+          {selectedMeeting?.status === "ended" && (
+            <Card className="border-none bg-card p-5">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold">Attendance History</h2>
+                <p className="text-sm text-muted-foreground">
+                  Full join and leave history for this meeting, including repeated entries for the same participant.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {attendanceHistory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No attendance history was recorded for this meeting.</p>
+                ) : (
+                  attendanceHistory.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-border p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <p className="font-medium">{item.email}</p>
+                          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            <p>First joined: {formatHistoryDateTime(item.joinedAt)}</p>
+                            <p>Last left: {formatHistoryDateTime(item.lastLeftAt)}</p>
+                            <p>Join count: {item.joinCount}</p>
+                            <p>Total tracked attendance: {item.totalDurationMinutes} min</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                            {item.isVerifiedMember ? "Verified member" : "Guest"}
+                          </span>
+                          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize">
+                            {item.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-2xl bg-muted/60 p-3">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Join / Leave History
+                        </p>
+
+                        {item.sessions.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No session history recorded.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {item.sessions.map((session, index) => (
+                              <div key={session.id} className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="font-medium text-foreground">Session {item.sessions.length - index}</span>
+                                  <span>{session.left_at ? "Completed" : "Open session"}</span>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                  <p className="flex items-center gap-2">
+                                    <LogIn className="size-3.5 text-emerald-600" />
+                                    Joined {formatHistoryDateTime(session.joined_at)}
+                                  </p>
+                                  <p className="flex items-center gap-2">
+                                    <LogOut className="size-3.5 text-amber-600" />
+                                    {session.left_at ? `Left ${formatHistoryDateTime(session.left_at)}` : "No leave recorded"}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock3 className="size-3.5" />
+                        Total tracked attendance: {item.totalDurationMinutes} min
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6">
