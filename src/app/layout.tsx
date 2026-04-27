@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ToastContainer } from "react-toastify";
+import { ThemeProvider, themeScript } from "@/components/theme/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Configure Poppins
 const poppins = Poppins({
@@ -25,9 +28,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("h-full antialiased", poppins.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn("h-full antialiased", poppins.variable)}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-screen bg-background font-sans">
-        {children}
+        <ThemeProvider >
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar
+            newestOnTop
+            pauseOnHover
+            theme="colored"
+            className="cursor-pointer"
+          />
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

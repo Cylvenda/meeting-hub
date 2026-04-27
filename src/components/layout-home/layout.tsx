@@ -11,7 +11,7 @@ const Layout = ({ children }: LayoutProps) => {
      const [showMenu, setShowMenu] = useState(false)
 
      return (
-          <div className='min-h-screen bg-accent'>
+          <div className='min-h-screen bg-accent text-foreground'>
                <Header showMenu={showMenu} setShowMenu={setShowMenu} />
                <div className='flex justify-center w-full'>
                     {children}

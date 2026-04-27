@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../../node_modules/@livekit/components-styles/dist/general/index.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -134,12 +135,35 @@ body {
   min-height: 100vh;
 }
 
-/* hide Jitsi watermark in iframe */
-iframe {
-  --watermark-display: none !important;
+[data-lk-theme="default"] {
+  --lk-bg: #0f172a;
+  --lk-fg: #f8fafc;
+  --lk-accent-fg: #ffffff;
+  --lk-accent-bg: #c2410c;
+  --lk-accent-hover-bg: #9a3412;
+  --lk-border-color: rgba(255, 255, 255, 0.08);
+  --lk-control-bg: rgba(15, 23, 42, 0.78);
+  --lk-button-bg: rgba(255, 255, 255, 0.08);
+  --lk-button-hover-bg: rgba(255, 255, 255, 0.14);
 }
 
-.jitsi-watermark,
-#watermark {
-  display: none !important;
+.lk-prejoin-modern {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  border-radius: 1rem;
+  min-height: 28rem;
+}
+
+.lk-prejoin-modern .lk-button {
+  background: var(--color-chart-3);
+  color: white;
+  border-radius: 0.9rem;
+}
+
+.lk-prejoin-modern .lk-button:hover {
+  filter: brightness(0.96);
+}
+
+.lk-prejoin-modern .lk-input,
+.lk-prejoin-modern .lk-select {
+  border-radius: 0.85rem;
 }

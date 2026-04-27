@@ -128,7 +128,12 @@ export const PasswordInput = <T extends FieldValues>({ label, name, placeholder,
                render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                          <FieldLabel className='flex flex-row justify-between' htmlFor={name}>
-                              {label} <Link href={`${forgetPassword?.location}`} className='text-blue-600 font-light hover:underline '>{forgetPassword?.text}</Link>
+                              {label}
+                              {forgetPassword?.text && forgetPassword?.location && (
+                                   <Link href={forgetPassword.location} className='font-light text-chart-3 hover:underline'>
+                                        {forgetPassword.text}
+                                   </Link>
+                              )}
                          </FieldLabel>
                          <div className='flex flex-row justify-between items-center gap-1 '>
                               <Input
@@ -137,10 +142,10 @@ export const PasswordInput = <T extends FieldValues>({ label, name, placeholder,
                                    type={type}
                                    placeholder={placeholder}
                                    aria-invalid={fieldState.invalid}
-                                   className="focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500 p-5"
+                                   className="p-5 focus-visible:border-chart-3 focus-visible:ring-2 focus-visible:ring-chart-3/40"
                               />
 
-                              <span className='border border-gray-300 dark:border-gray-700 cursor-pointer p-2 rounded-2xl '>
+                              <span className='cursor-pointer rounded-2xl border border-input bg-background p-2'>
                                    {
                                         show ?
                                              <EyeClosed onClick={() => setShow(false)} />

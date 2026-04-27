@@ -14,11 +14,11 @@ interface MobileMenuProps {
 
 export default function MobileMenu({ menuItems, onClose }: MobileMenuProps) {
      return (
-          <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-               <div className="bg-white w-64 h-full p-4">
+          <div className="fixed inset-0 z-50 bg-black/50 md:hidden">
+               <div className="h-full w-64 bg-card p-4 text-foreground shadow-xl">
                     <div className="flex justify-between items-center mb-4">
                          <h2 className="text-lg font-semibold">Menu</h2>
-                         <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100">
+                         <button onClick={onClose} className="rounded-md p-2 transition hover:bg-muted">
                               <X />
                          </button>
                     </div>
@@ -26,7 +26,7 @@ export default function MobileMenu({ menuItems, onClose }: MobileMenuProps) {
                          {menuItems.map((item, i) => (
                               <button
                                    key={i}
-                                   className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-gray-100"
+                                   className="flex w-full items-center gap-3 rounded-md p-3 transition hover:bg-muted"
                                    onClick={onClose}
                               >
                                    <item.icon className="w-5 h-5" />

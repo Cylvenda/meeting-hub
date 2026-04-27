@@ -7,19 +7,25 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { FormInput, FieldInput, PasswordInput } from "@/components/customs/form"
 import Link from "next/link"
+import { useAuthUserStore } from "@/store/auth/userAuth.store"
+import { useState } from "react"
+import { authUserService } from "@/api/services/auth.service"
+import { LoginFormSchema } from "@/components/schema/user-form-schema"
+import { useRouter } from "next/navigation"
+import { toast } from "react-toastify"
+import { Spinner } from "@/components/ui/spinner"
 
 
-const loginSchema = z.object({
-     email: z.string().email("Enter a valid email"),
-     password: z.string().min(6, "Password must be at least 6 characters"),
-})
-
-
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<typeof LoginFormSchema>
 
 export default function LoginPage() {
+
+     const router = useRouter()
+     const [loading, setLoading] = useState(false)
+     const { fetchUser } = useAuthUserStore()
+
      const form = useForm<LoginFormValues>({
-          resolver: zodResolver(loginSchema),
+          resolver: zodResolver(LoginFormSchema),
           defaultValues: {
                email: "",
                password: "",
@@ -27,10 +33,37 @@ export default function LoginPage() {
      })
 
      const onSubmit = async (data: LoginFormValues) => {
-          console.log("Login Data:", data)
+          setLoading(true)
 
-          // await axios.post("/api/auth/login", data, { withCredentials: true })
+          try {
+               const res = await authUserService.userLogin(data)
+
+               if (res.status === 200) {
+                    // Wait briefly for cookie to sync (optional, helps in dev)
+                    await new Promise(resolve => setTimeout(resolve, 200))
+
+                    const currentUser = await fetchUser()
+
+                    if (!currentUser) {
+                         toast.error("Login succeeded, but failed to load your profile.")
+                         return
+                    }
+
+                    if (!currentUser.isActive) {
+                         toast.warning("Your account is not activated yet.")
+                         return
+                    }
+
+                    router.replace(currentUser.isAdmin ? "/admin" : "/dashboard")
+                    router.refresh()
+               }
+          } catch {
+               toast.error("Login failed. Check credentials.")
+          } finally {
+               setLoading(false)
+          }
      }
+
 
      return (
           <div className="w-full">
@@ -64,8 +97,8 @@ export default function LoginPage() {
                          />
 
                          {/* SUBMIT */}
-                         <Button type="submit" className="w-full p-5 bg-chart-3 hover:bg-chart-2">
-                              Sign In
+                         <Button type="submit" disabled={loading} className="w-full p-5 bg-chart-3 hover:bg-chart-2">
+                              {loading ? <Spinner /> : "Sign In"}
                          </Button>
 
                          {/* FOOTER */}
@@ -73,7 +106,7 @@ export default function LoginPage() {
                               Don’t have an account?{" "}
                               <Link
                                    href="/register"
-                                   className="text-blue-500 hover:underline"
+                                   className="text-chart-3 hover:underline"
                               >
                                    Sign up
                               </Link>

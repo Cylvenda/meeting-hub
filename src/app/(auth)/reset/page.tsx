@@ -7,10 +7,16 @@ import Link from "next/link"
 import { ResetFormSchema } from "@/components/schema/user-form-schema"
 import { FieldInput, FormInput } from "@/components/customs/form"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
+import { authUserService } from "@/api/services/auth.service"
+import { useState } from "react"
+import { toast } from "react-toastify"
 
 type ResetFormValues = z.infer<typeof ResetFormSchema>
 
 const ForgetPassword = () => {
+     const [loading, setLoading] = useState(false)
+
      const form = useForm<ResetFormValues>({
           resolver: zodResolver(ResetFormSchema),
           defaultValues: {
@@ -18,8 +24,23 @@ const ForgetPassword = () => {
           },
      })
 
-     const handleSubmit = (data: ResetFormValues) => {
-          console.log(data)
+     const handleSubmit = async (data: ResetFormValues) => {
+          try {
+               setLoading(true)
+               await authUserService.requestPasswordReset({ email: data.email })
+               toast.success("Password reset link sent. Please check your email.")
+               form.reset()
+          } catch (error: unknown) {
+               const errorMessage =
+                    (error as { response?: { data?: { email?: string[]; detail?: string } } })?.response?.data
+               const msg =
+                    errorMessage?.detail ||
+                    errorMessage?.email?.[0] ||
+                    "Could not send reset link. Please try again."
+               toast.error(msg)
+          } finally {
+               setLoading(false)
+          }
      }
 
      return (
@@ -48,14 +69,14 @@ const ForgetPassword = () => {
                               <div className="flex justify-between text-sm">
                                    <Link
                                         href="/login"
-                                        className="text-blue-500 hover:underline"
+                                        className="text-chart-3 hover:underline"
                                    >
                                         Back to Login
                                    </Link>
 
                                    <Link
                                         href="/register"
-                                        className="text-blue-500 hover:underline"
+                                        className="text-chart-3 hover:underline"
                                    >
                                         Create account
                                    </Link>
@@ -64,9 +85,10 @@ const ForgetPassword = () => {
                               {/* SUBMIT */}
                               <Button
                                    type="submit"
+                                   disabled={loading}
                                    className="w-full bg-chart-3 hover:opacity-90 transition p-5"
                               >
-                                   Send Reset Link
+                                   {loading ? <Spinner /> : "Send Reset Link"}
                               </Button>
                          </form>
                     </FormInput>

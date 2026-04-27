@@ -1,62 +1,80 @@
-import { meetings } from "@/lib/mock-data";
+import Link from "next/link";
 import { Separator } from "../ui/separator";
 import { getInitials } from "@/hooks/get-initials";
+import { useGroupStore } from "@/store/group/groupUser.store";
+import { useMeetingStore } from "@/store/meeting/meeting.store";
 
 
 
 const MeetingsList = () => {
+     const { selectedGroup } = useGroupStore()
+     const { meetings } = useMeetingStore()
+     const groupMeetings = meetings.filter((meeting) => meeting.group === selectedGroup?.id)
 
      return (
-          <div className="bg-white p-4 rounded-2xl shadow">
+          <div className="rounded-2xl bg-card p-4 shadow">
                <h3 className="text-lg font-bold mb-4">Meetings</h3>
                <div className="divide-y">
-                    {meetings.map((m, i) => (
-                         <div key={i} className="flex items-center gap-6 py-3">
+                    {groupMeetings.length === 0 && (
+                         <p className="py-3 text-sm text-muted-foreground">No meetings have been scheduled for this group yet.</p>
+                    )}
+                    {groupMeetings.map((m) => (
+                         <div key={m.id} className="flex items-center gap-6 py-3">
+                              {(() => {
+                                   const meetingHref = m.status === "ongoing" ? `/meeting/${m.id}/session` : `/meeting/${m.id}`
+                                   const meetingLabel = m.status === "ongoing" ? "Join Session" : "Open Details"
 
-                              {/* DATE */}
-                              <div className="text-center text-sm">
+                                   return (
+                                        <>
+                                             {/* DATE */}
+                                             <div className="text-center text-sm">
 
-                              </div>
+                                             </div>
 
 
 
-                              {/* AVATAR */}
-                              <div className="w-10 h-10 bg-chart-2 text-white rounded-full flex items-center justify-center font-semibold">
-                                   {getInitials(m.title)}
-                              </div>
+                                             {/* AVATAR */}
+                                             <div className="w-10 h-10 bg-chart-2 text-white rounded-full flex items-center justify-center font-semibold">
+                                                  {getInitials(m.title)}
+                                             </div>
 
-                              <Separator orientation="vertical" className="h-10" />
-                              {/* CONTENT */}
-                              <div className="flex justify-between items-center w-full">
-                                   <div>
-                                        <p className="font-medium">{m.title}</p>
-                                        <p className="font-medium">
-                                             {new Date(m.start_time).toLocaleDateString("en-US", {
-                                                  day: "numeric",
-                                                  month: "short",
-                                                  year: "numeric",
-                                             })}
-                                        </p>
+                                             <Separator orientation="vertical" className="h-10" />
+                                             {/* CONTENT */}
+                                             <div className="flex justify-between items-center w-full">
+                                                  <div>
+                                                       <p className="font-medium">{m.title}</p>
+                                                       <p className="font-medium">
+                                                            {new Date(m.scheduled_start).toLocaleDateString("en-US", {
+                                                                 day: "numeric",
+                                                                 month: "short",
+                                                                 year: "numeric",
+                                                            })}
+                                                       </p>
 
-                                   </div>
+                                                  </div>
 
-                                   <div className="flex flex-row items-center justify-center gap-5">
-                                        <p
-                                             className={`px-2 py-1 rounded-full text-xs text-center ${m.status === "live"
-                                                  ? "bg-green-100 text-green-600"
-                                                  : m.status === "ended"
-                                                       ? "bg-red-100 text-red-600"
-                                                       : "bg-yellow-100 text-yellow-600"
-                                                  }`}
-                                        >
-                                             {m.status}
-                                        </p>
+                                                  <div className="flex flex-row items-center justify-center gap-5">
+                                                       <p
+                                                            className={`px-2 py-1 rounded-full text-xs text-center ${m.status === "ongoing"
+                                                                 ? "bg-green-100 text-green-600"
+                                                                 : m.status === "ended"
+                                                                      ? "bg-red-100 text-red-600"
+                                                                      : m.status === "cancelled"
+                                                                      ? "bg-muted text-muted-foreground"
+                                                                           : "bg-chart-2/20 text-chart-5"
+                                                                 }`}
+                                                       >
+                                                            {m.status}
+                                                       </p>
 
-                                        <button className="px-3 py-1 bg-chart-2 text-white rounded-xl hover:bg-blue-700">
-                                             Join
-                                        </button>
-                                   </div>
-                              </div>
+                                                       <Link href={meetingHref} className="rounded-xl bg-chart-2 px-3 py-1 text-white transition hover:opacity-90">
+                                                            {meetingLabel}
+                                                       </Link>
+                                                  </div>
+                                             </div>
+                                        </>
+                                   )
+                              })()}
                          </div>
                     ))}
                </div>

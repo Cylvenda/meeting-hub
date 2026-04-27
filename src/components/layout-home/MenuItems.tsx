@@ -1,41 +1,46 @@
 "use client"
 
-import { Menu, MessageSquareTextIcon, BellRing, Settings, Moon } from 'lucide-react'
+import Link from 'next/link'
+import { BellRing, LayoutDashboard, Settings, ShieldCheck, UserRound } from 'lucide-react'
+import { Button } from '../ui/button'
+import { useAuthUserStore } from '@/store/auth/userAuth.store'
 
 interface MenuItemsProps {
      isMobile?: boolean
 }
 
-const items = [
-     { icon: Menu, label: "Menu" },
-     { icon: MessageSquareTextIcon, label: "Messages" },
-     { icon: BellRing, label: "Notifications" },
-     { icon: Settings, label: "Settings" },
-     { icon: Moon, label: "Toggle Theme" },
-]
-
 const MenuItems = ({ isMobile = false }: MenuItemsProps) => {
+     const { user } = useAuthUserStore()
+     const items = [
+          { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+          { icon: BellRing, label: "Notifications", href: "/notifications" },
+          { icon: UserRound, label: "Profile", href: "/profile" },
+          ...(user?.isAdmin ? [{ icon: ShieldCheck, label: "Admin", href: "/admin" }] : []),
+          { icon: Settings, label: "Settings", href: "/settings" },
+     ]
+
      return (
           <>
                {items.map((item, index) => {
                     const Element = item.icon
                     return isMobile ? (
-                         <button
+                         <Link
                               key={index}
-                              className='p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-chart-1'
+                              href={item.href}
                               aria-label={item.label}
+                              className='hover:bg-accent'
                          >
-                              <Element />
-                              {item.label}
-                         </button>
+                              <div className='flex gap-2 p-2' ><Element /> {item.label} </div>
+                         </Link>
                     ) : (
-                         <button
+                         <Link
                               key={index}
-                              className='bg-white p-2 rounded-md cursor-pointer hover:border-2 border-chart-3 hover:bg-chart-1'
+                              href={item.href}
+                              className='hover:bg-chart-2'
                               aria-label={item.label}
                          >
-                              <Element />
-                         </button>
+                              <Button className='bg-chart-3' size={"icon-lg"}><Element /></Button>
+                         </Link>
                     )
                })}
           </>

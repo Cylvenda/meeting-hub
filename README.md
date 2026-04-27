@@ -1,6 +1,6 @@
 # Meeting Hub Frontend
 
-A Next.js 16 frontend for the Meeting Hub platform. The app includes authentication screens, a dashboard and home experience, group and profile views, and a Jitsi-powered meeting page for live calls.
+A Next.js 16 frontend for the Meeting Hub platform. The app includes authentication screens, a dashboard and home experience, group and profile views, and a LiveKit-powered meeting page for realtime video calls.
 
 ## Current Scope
 
@@ -10,7 +10,7 @@ Implemented in the frontend today:
 - Login, register, and password reset screens
 - Dashboard and home views built from reusable UI components
 - Group, profile, settings, and notifications pages
-- Meeting room page powered by `@jitsi/react-sdk`
+- Meeting room page powered by LiveKit React components
 - Shared Axios client configured for the backend API
 - Form handling with React Hook Form and Zod validation
 
@@ -30,7 +30,7 @@ Current gaps:
 - React Hook Form
 - Zod
 - Zustand
-- Jitsi React SDK
+- LiveKit React Components
 
 ## Project Structure
 
@@ -66,6 +66,13 @@ npm run dev
 
 3. Open `http://localhost:3000`.
 
+To test from another device on the same network, the frontend dev server is configured
+to listen on all interfaces. Find your machine IP with `ip a`, then open:
+
+```text
+http://<your-local-ip>:3000
+```
+
 ## Available Scripts
 
 - `npm run dev` - start the Next.js development server
@@ -81,7 +88,9 @@ The shared API client is defined in `src/lib/api.ts` and uses the following vari
 NEXT_PUBLIC_API_BASE=http://localhost:8000/api
 ```
 
-If `NEXT_PUBLIC_API_BASE` is not set, the frontend falls back to `http://localhost:8000/api`.
+If `NEXT_PUBLIC_API_BASE` is not set, the frontend falls back to the built-in Next.js
+proxy route. The proxy then talks to Django through `BACKEND_API_BASE`, which defaults
+to `http://127.0.0.1:8000/api/` on the same machine.
 
 ## Main Routes
 
@@ -113,14 +122,20 @@ The backend README documents available endpoints for:
 - meetings and minutes
 - notifications
 
-## Jitsi Notes
+## Realtime Meeting Notes
 
-There are currently two meeting integration paths in the codebase:
+The meeting room now uses LiveKit end to end:
 
-- `src/app/(meetings)/meeting/[meetingId]/page.tsx` uses the public `meet.jit.si` domain
-- `src/components/jitsi/JitsiMeetingWrapper.tsx` points at `https://localhost:8443` for a local or self-hosted Jitsi deployment
+- `src/components/meeting/meeting-realtime-panel.tsx` provides pre-join, connect, reconnect, and in-room conferencing UI
+- the frontend requests room tokens from the Django backend
+- backend webhooks remain the source of truth for participant presence and attendance
 
-Before standardizing meeting behavior, decide which Jitsi environment should be the default for local development.
+For local development, make sure these are configured:
+
+- backend `LIVEKIT_URL`
+- backend `LIVEKIT_API_KEY`
+- backend `LIVEKIT_API_SECRET`
+- optional frontend fallback `NEXT_PUBLIC_LIVEKIT_URL`
 
 ## Development Status
 

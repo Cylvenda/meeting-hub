@@ -1,16 +1,46 @@
-import { users } from "@/lib/mock-data";
+"use client"
+
+import { Button } from "@/components/ui/button";
+import { useAuthUserStore } from "@/store/auth/userAuth.store";
+import { useGroupStore } from "@/store/group/groupUser.store";
+import { toast } from "react-toastify";
 
 
 export default function MembersList() {
+     const { user } = useAuthUserStore()
+     const { selectedGroupMembers, selectedGroup, loading, invitationLoading, verifyGroupMember, toggleGroupMember } = useGroupStore()
+     const isHost = user?.email === selectedGroup?.created_by
+
+     const handleVerify = async (membershipId: string) => {
+          if (!selectedGroup?.id) return
+          const result = await verifyGroupMember(selectedGroup.id, membershipId)
+          if (result.success) {
+               toast.success(result.message)
+          } else {
+               toast.error(result.message)
+          }
+     }
+
+     const handleToggle = async (membershipId: string) => {
+          if (!selectedGroup?.id) return
+          const result = await toggleGroupMember(selectedGroup.id, membershipId)
+          if (result.success) {
+               toast.success(result.message)
+          } else {
+               toast.error(result.message)
+          }
+     }
+
      return (
-          <div className="bg-white p-4 rounded-2xl shadow h-240 overflow-y-auto sticky top-22">
+          <div className="sticky top-22 h-240 overflow-y-auto rounded-2xl bg-card p-4 shadow">
                <h3 className="text-lg font-bold mb-4">Members</h3>
                <div className="divide-y">
-                    {users.map(m => (
-                         <div key={m.name} className="flex justify-between items-center py-2">
+                    {selectedGroupMembers.map((member) => (
+                         <div key={member.membership_id} className="flex justify-between items-center py-2 border-b-2">
                               <div className="flex items-center gap-3">
                                    <div className="w-10 h-10 bg-chart-2 text-white rounded-full flex items-center justify-center">
-                                        {m.name
+                                        {[member.first_name, member.last_name]
+                                             .join(" ")
                                              .split(' ')
                                              .filter(Boolean)
                                              .map(word => word[0])
@@ -19,13 +49,34 @@ export default function MembersList() {
                                         }
                                    </div>
                                    <div>
-                                        <p className="font-medium">{m.name}</p>
-                                        <p className="text-xs font-light">{m.role}</p>
+                                        <p className="font-medium">
+                                             {[member.first_name, member.last_name].join(" ").trim() || member.email}
+                                        </p>
+                                        <p className="text-xs font-light">{member.role} • {member.is_verified ? "verified" : "pending verification"}</p>
                                    </div>
                               </div>
-                              <p className={`text-sm ${m.status === 'active' ? 'text-green-600' : m.status === 'inactive' ? 'text-yellow-600' : 'text-gray-400'}`}>{m.status}</p>
+                              <div className="flex flex-col items-end gap-2">
+                                   <p className={`text-sm ${member.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                                        {member.is_active ? "active" : "inactive"}
+                                   </p>
+                                   {isHost && member.role !== "HOST" && (
+                                        <div className="flex gap-2">
+                                             {!member.is_verified && (
+                                                  <Button size="sm" className="bg-chart-3" disabled={invitationLoading} onClick={() => handleVerify(member.membership_id)}>
+                                                       Verify
+                                                  </Button>
+                                             )}
+                                             <Button size="sm" variant="outline" disabled={invitationLoading} onClick={() => handleToggle(member.membership_id)}>
+                                                  {member.is_active ? "Deactivate" : "Activate"}
+                                             </Button>
+                                        </div>
+                                   )}
+                              </div>
                          </div>
                     ))}
+                    {!loading && selectedGroupMembers.length === 0 && (
+                         <p className="py-2 text-sm text-muted-foreground">No members found for this group.</p>
+                    )}
                </div>
           </div>
      )

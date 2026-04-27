@@ -5,8 +5,11 @@ import { RegisterFormSchema } from "@/components/schema/user-form-schema"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { authUserService } from "@/api/services/auth.service"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "react-toastify"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -14,6 +17,7 @@ type RegisterFormValues = z.infer<typeof RegisterFormSchema>
 
 const Register = () => {
      const [loading, setLoading] = useState(false)
+     const router = useRouter()
 
      const form = useForm<RegisterFormValues>({
           resolver: zodResolver(RegisterFormSchema),
@@ -27,12 +31,25 @@ const Register = () => {
      const onSubmitHandler = async (data: RegisterFormValues) => {
           try {
                setLoading(true)
-               console.log("Register Data:", data)
+               const res = await authUserService.userRegister(data)
 
-               // API CALL HERE
+               if (res.status === 201) {
+                    toast.success("Account created. Check your email to activate your account.")
+                    router.push("/login")
+               }
 
           } catch (error: unknown) {
-               console.error(error)
+               const errorMessage =
+                    (error as { response?: { data?: { email?: string[]; phone?: string[]; password?: string[]; detail?: string } } })
+                         ?.response?.data
+               const msg =
+                    errorMessage?.detail ||
+                    errorMessage?.email?.[0] ||
+                    errorMessage?.phone?.[0] ||
+                    errorMessage?.password?.[0] ||
+                    "Registration failed. Please try again."
+
+               toast.error(msg)
           } finally {
                setLoading(false)
           }
@@ -82,7 +99,7 @@ const Register = () => {
                               <div className="flex justify-end">
                                    <Link
                                         href="/login"
-                                        className="text-sm text-blue-500 hover:underline"
+                                        className="text-sm text-chart-3 hover:underline"
                                    >
                                         Already have an account?
                                    </Link>

@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import UserInfo from './UserInfo'
 import MenuItems from './MenuItems'
+import { useMeetingStore } from '@/store/meeting/meeting.store'
+import { useAuthUserStore } from '@/store/auth/userAuth.store'
+import ThemeToggle from '@/components/theme/theme-toggle'
 
 interface HeaderProps {
      showMenu: boolean
@@ -13,31 +16,47 @@ interface HeaderProps {
 }
 
 const Header = ({ showMenu, setShowMenu }: HeaderProps) => {
+     const { user } = useAuthUserStore()
+     const { meetings } = useMeetingStore()
+     const meetingsToday = meetings.filter((meeting) => {
+          const scheduledDate = new Date(meeting.scheduled_start)
+          return scheduledDate.toDateString() === new Date().toDateString()
+     }).length
+
      return (
-          <header className='p-5 w-full border-b-2 border-primary sticky top-0 bg-white z-50'>
+          <header className='sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80'>
                <div className='flex flex-row justify-between md:justify-evenly items-center'>
 
                     {/* Branding */}
                     <div>
-                         <h1 className='font-bold text-2xl flex gap-3 items-center'>
+                         <h1 className='font-semibold text-2xl flex gap-3 items-center'>
                               <LayoutDashboard />
-                              <Link href="/home">Meeting Hub</Link>
+                              <Link href={user?.isAdmin ? "/admin" : "/dashboard"}>Meeting Hub</Link>
                          </h1>
                          <h2 className='text-sm'>
-                              Saturday, March 28, 2026 · 3 meetings today
+                              {
+                                   new Date().toLocaleDateString("en-US", {
+                                        weekday: "long",
+                                        year: "numeric",
+                                   month: "long",
+                                   day: "numeric",
+                                   })
+                              } · {meetingsToday} meetings today
                          </h2>
                     </div>
 
                     {/* Mobile menu toggle */}
-                    <div className='block md:hidden'>
-                         <Button onClick={() => setShowMenu(!showMenu)} size='icon-lg'>
+                    <div className='flex items-center gap-2 md:hidden'>
+                         <ThemeToggle compact />
+                         <Button onClick={() => setShowMenu(!showMenu)} size='icon-lg' variant='outline' className='rounded-2xl'>
                               {showMenu ? <X /> : <Menu />}
                          </Button>
                     </div>
 
                     {/* Desktop menu icons */}
-                    <div className='hidden md:flex flex-row items-center gap-7'>
+                    <div className='hidden md:flex flex-row items-center gap-4'>
                          <MenuItems />
+                         <ThemeToggle />
                     </div>
 
                     {/* User info */}
@@ -48,7 +67,7 @@ const Header = ({ showMenu, setShowMenu }: HeaderProps) => {
 
                {/* Mobile dropdown */}
                {showMenu && (
-                    <div className='w-full bg-white p-2 transition duration-300 ease-in-out flex flex-col'>
+                    <div className='w-full bg-background p-2 transition duration-300 ease-in-out flex flex-col'>
                          <MenuItems isMobile />
                     </div>
                )}
