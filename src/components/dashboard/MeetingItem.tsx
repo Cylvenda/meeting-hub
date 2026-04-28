@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import type { Meeting } from "@/store/meeting/meeting.types";
+import { useGroupStore } from "@/store/group/groupUser.store";
 
 
 interface MeetingItemProps {
@@ -12,6 +13,7 @@ interface MeetingItemProps {
 }
 
 const MeetingItem: FC<MeetingItemProps> = ({ meeting }) => {
+     const { groups } = useGroupStore()
      const statusClasses =
           meeting.status === "ongoing"
                ? "bg-green-100 text-green-600"
@@ -24,6 +26,7 @@ const MeetingItem: FC<MeetingItemProps> = ({ meeting }) => {
      const startDate = new Date(meeting.scheduled_start)
      const joinLabel = meeting.status === "ongoing" ? "Join Session" : "Details"
      const meetingHref = meeting.status === "ongoing" ? `/meeting/${meeting.id}/session` : `/meeting/${meeting.id}`
+     const groupName = groups.find((group) => group.id === meeting.group)?.name || "Unknown Group"
 
      return (
           <div className="w-full p-2 rounded-2xl flex justify-between items-center border border-chart-3 hover:shadow-md hover:scale-[1.01] transition cursor-pointer">
@@ -37,7 +40,7 @@ const MeetingItem: FC<MeetingItemProps> = ({ meeting }) => {
 
                     <div>
                          <h1 className="font-semibold text-lg">{meeting.title}</h1>
-                         <p className="text-sm text-muted-foreground">Host: {meeting.host_email}</p>
+                         <p className="text-sm text-muted-foreground"> <span className="font-semibold" >Group Name: </span> {groupName}</p>
                     </div>
                </div>
 

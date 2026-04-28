@@ -8,19 +8,27 @@ import { formatUTCDate } from '@/hooks/formatted-date'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 import { useMeetingStore } from '@/store/meeting/meeting.store'
+import { useRouter } from 'next/navigation'
+import { useAuthUserStore } from '@/store/auth/userAuth.store'
 
 export default function GroupHeader() {
      const [isInviteOpen, setIsInviteOpen] = useState(false)
      const [isScheduleOpen, setIsScheduleOpen] = useState(false)
+     const [isInstantOpen, setIsInstantOpen] = useState(false)
      const [inviteEmail, setInviteEmail] = useState("")
      const [inviteMessage, setInviteMessage] = useState("")
      const [meetingTitle, setMeetingTitle] = useState("")
      const [meetingDescription, setMeetingDescription] = useState("")
      const [meetingStart, setMeetingStart] = useState("")
      const [meetingEnd, setMeetingEnd] = useState("")
+     const [instantTitle, setInstantTitle] = useState("")
+     const [instantDescription, setInstantDescription] = useState("")
+     const router = useRouter()
+     const { user } = useAuthUserStore()
 
      const { selectedGroup, invitationLoading, sendGroupInvitation } = useGroupStore()
-     const { meetings, createMeeting, loading } = useMeetingStore()
+     const { meetings, createMeeting, createInstantMeeting, loading } = useMeetingStore()
+     const isHost = user?.email === selectedGroup?.created_by
      const memberCount = selectedGroup?.members_count ?? 0
      const groupMeetings = meetings.filter((meeting) => meeting.group === selectedGroup?.id)
      const liveMeeting = groupMeetings.find((meeting) => meeting.status === "ongoing")
@@ -86,6 +94,32 @@ export default function GroupHeader() {
           toast.error(result.message)
      }
 
+     const handleInstantMeeting = async (event: React.FormEvent<HTMLFormElement>) => {
+          event.preventDefault()
+
+          if (!selectedGroup?.id) {
+               toast.error("No group selected.")
+               return
+          }
+
+          const result = await createInstantMeeting({
+               title: instantTitle.trim() || `Instant Meeting - ${selectedGroup.name}`,
+               description: instantDescription.trim() || undefined,
+               group: selectedGroup.id,
+          })
+
+          if (result.success && result.meeting) {
+               toast.success(result.message)
+               setInstantTitle("")
+               setInstantDescription("")
+               setIsInstantOpen(false)
+               router.push(`/meeting/${result.meeting.id}/session`)
+               return
+          }
+
+          toast.error(result.message)
+     }
+
      return (
           <>
                <div className="flex flex-col justify-between rounded-2xl bg-card p-4 shadow md:flex-row md:items-center">
@@ -114,9 +148,16 @@ export default function GroupHeader() {
                                    <Play /> Open Meeting Details
                               </Button>
                          )}
-                         <Button className="bg-chart-3" onClick={() => setIsScheduleOpen(true)} >
-                              <CalendarPlus2 /> Create Meeting Schedule
-                         </Button>
+                         {isHost ? (
+                              <>
+                                   <Button className="bg-chart-2" onClick={() => setIsInstantOpen(true)} disabled={!selectedGroup?.id}>
+                                        <Play /> Start Instant Meeting
+                                   </Button>
+                                   <Button className="bg-chart-3" onClick={() => setIsScheduleOpen(true)} >
+                                        <CalendarPlus2 /> Create Meeting Schedule
+                                   </Button>
+                              </>
+                         ) : null}
                     </div>
                </div>
 
@@ -164,6 +205,56 @@ export default function GroupHeader() {
                                         </Button>
                                         <Button type="submit" className="bg-chart-3" disabled={invitationLoading}>
                                              {invitationLoading ? "Sending..." : "Send Invite"}
+                                        </Button>
+                                   </div>
+                              </form>
+                         </div>
+                    </div>
+               )}
+
+               {isInstantOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                         <div className="w-full max-w-xl rounded-xl bg-card p-5 shadow-xl">
+                              <h2 className="text-lg font-semibold">Start Instant Meeting</h2>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                   Start a live meeting now for {selectedGroup?.name}. Members will receive an email to join immediately.
+                              </p>
+
+                              <form className="mt-4 space-y-3" onSubmit={handleInstantMeeting}>
+                                   <div>
+                                        <label htmlFor="instant-title" className="mb-1 block text-sm font-medium">Title</label>
+                                        <input
+                                             id="instant-title"
+                                             type="text"
+                                             value={instantTitle}
+                                             onChange={(event) => setInstantTitle(event.target.value)}
+                                             placeholder={`Instant Meeting - ${selectedGroup?.name || "Group"}`}
+                                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-chart-3"
+                                        />
+                                   </div>
+
+                                   <div>
+                                        <label htmlFor="instant-description" className="mb-1 block text-sm font-medium">Description</label>
+                                        <textarea
+                                             id="instant-description"
+                                             value={instantDescription}
+                                             onChange={(event) => setInstantDescription(event.target.value)}
+                                             className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-chart-3"
+                                             placeholder="Quick context for members joining now"
+                                        />
+                                   </div>
+
+                                   <div className="flex items-center justify-end gap-2 pt-1">
+                                        <Button
+                                             type="button"
+                                             variant="outline"
+                                             onClick={() => setIsInstantOpen(false)}
+                                             disabled={loading}
+                                        >
+                                             Cancel
+                                        </Button>
+                                        <Button type="submit" className="bg-chart-2" disabled={loading}>
+                                             {loading ? "Starting..." : "Start Now"}
                                         </Button>
                                    </div>
                               </form>

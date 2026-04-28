@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Separator } from "../ui/separator";
-import { getInitials } from "@/hooks/get-initials";
+import { CalendarDays } from "lucide-react";
 import { useGroupStore } from "@/store/group/groupUser.store";
 import { useMeetingStore } from "@/store/meeting/meeting.store";
 
@@ -35,7 +35,7 @@ const MeetingsList = () => {
 
                                              {/* AVATAR */}
                                              <div className="w-10 h-10 bg-chart-2 text-white rounded-full flex items-center justify-center font-semibold">
-                                                  {getInitials(m.title)}
+                                                  <CalendarDays size={18} />
                                              </div>
 
                                              <Separator orientation="vertical" className="h-10" />

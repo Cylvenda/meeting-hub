@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Layout from "@/components/layout-home/layout"
 import { useAuthUserStore } from "@/store/auth/userAuth.store"
 import { useGroupStore } from "@/store/group/groupUser.store"
 import { useMeetingStore } from "@/store/meeting/meeting.store"
@@ -11,6 +10,7 @@ import { CurrentPageBreadcrumb } from "@/components/current-page-breadcrumb"
 import ThemeToggle from "@/components/theme/theme-toggle"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
+import { CompleteProfileModal } from "@/components/auth/complete-profile-modal"
 
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +41,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider>
+      <CompleteProfileModal />
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-18 shrink-0 sticky top-0 z-50 bg-sidebar items-center justify-between gap-2 border-b border-b-sidebar-border  px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

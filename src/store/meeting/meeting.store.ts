@@ -9,6 +9,11 @@ import type {
   RealtimeConnection,
 } from "./meeting.types"
 
+const sortMeetingsNewestFirst = (meetings: Meeting[]) =>
+  [...meetings].sort(
+    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+  )
+
 type MeetingState = {
   meetings: Meeting[]
   selectedMeeting: Meeting | null
@@ -29,6 +34,11 @@ type MeetingState = {
     scheduled_start: string
     scheduled_end?: string
   }) => Promise<{ success: boolean; message: string }>
+  createInstantMeeting: (payload: {
+    title?: string
+    description?: string
+    group: string
+  }) => Promise<{ success: boolean; message: string; meeting?: Meeting }>
   startMeeting: (meetingId: string) => Promise<{ success: boolean; message: string }>
   endMeeting: (meetingId: string) => Promise<{ success: boolean; message: string }>
   joinMeeting: (meetingId: string) => Promise<{ success: boolean; message: string; connection?: RealtimeConnection }>
@@ -61,7 +71,7 @@ export const useMeetingStore = create<MeetingState>((set) => ({
     try {
       const res = await meetingServices.getMeetings()
       set({
-        meetings: res.data,
+        meetings: sortMeetingsNewestFirst(res.data),
         loading: false,
       })
     } catch (err: unknown) {
@@ -132,12 +142,29 @@ export const useMeetingStore = create<MeetingState>((set) => ({
     try {
       const res = await meetingServices.createMeeting(payload)
       set((state) => ({
-        meetings: [res.data, ...state.meetings],
+        meetings: sortMeetingsNewestFirst([res.data, ...state.meetings]),
         loading: false,
       }))
       return { success: true, message: "Meeting scheduled successfully." }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to schedule meeting"
+      set({ loading: false, error: message })
+      return { success: false, message }
+    }
+  },
+
+  createInstantMeeting: async (payload) => {
+    set({ loading: true, error: null })
+    try {
+      const res = await meetingServices.createInstantMeeting(payload)
+      set((state) => ({
+        meetings: sortMeetingsNewestFirst([res.data, ...state.meetings]),
+        selectedMeeting: res.data,
+        loading: false,
+      }))
+      return { success: true, message: "Instant meeting started successfully.", meeting: res.data }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to start instant meeting"
       set({ loading: false, error: message })
       return { success: false, message }
     }
@@ -150,7 +177,9 @@ export const useMeetingStore = create<MeetingState>((set) => ({
       const res = await meetingServices.getMeetingById(meetingId)
       set((state) => ({
         selectedMeeting: res.data,
-        meetings: state.meetings.map((meeting) => (meeting.id === res.data.id ? res.data : meeting)),
+        meetings: sortMeetingsNewestFirst(
+          state.meetings.map((meeting) => (meeting.id === res.data.id ? res.data : meeting))
+        ),
         loading: false,
       }))
       return { success: true, message: "Meeting started successfully." }
@@ -168,7 +197,9 @@ export const useMeetingStore = create<MeetingState>((set) => ({
       const res = await meetingServices.getMeetingById(meetingId)
       set((state) => ({
         selectedMeeting: res.data,
-        meetings: state.meetings.map((meeting) => (meeting.id === res.data.id ? res.data : meeting)),
+        meetings: sortMeetingsNewestFirst(
+          state.meetings.map((meeting) => (meeting.id === res.data.id ? res.data : meeting))
+        ),
         loading: false,
       }))
       return { success: true, message: "Meeting ended successfully." }

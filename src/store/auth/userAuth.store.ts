@@ -12,6 +12,7 @@ type AuthState = {
      isLoggedIn: boolean
 
      fetchUser: () => Promise<User | null>
+     updateUserProfile: (payload: { first_name?: string; last_name?: string }) => Promise<{ success: boolean; message: string; user?: User }>
      checkAuth: () => Promise<boolean>
      resendRefreshToken: () => Promise<boolean>
      logout: () => Promise<void>
@@ -57,6 +58,38 @@ export const useAuthUserStore = create<AuthState>((set, get) => ({
                     error: message,
                })
                return null
+          }
+     },
+
+     updateUserProfile: async (payload) => {
+          set({ loading: true, error: null })
+          try {
+               const res = await userServices.updateUserMe(payload)
+               const userData: User = {
+                    uuid: res.data.uuid,
+                    firstName: res.data.first_name || "",
+                    lastName: res.data.last_name || "",
+                    email: res.data.email,
+                    phone: res.data.phone,
+                    username: res.data.username || "",
+                    isActive: res.data.is_active,
+                    isAdmin: res.data.is_admin,
+                    isStaff: res.data.is_staff,
+               }
+               set({
+                    user: userData,
+                    isAuthenticated: true,
+                    isLoggedIn: true,
+                    loading: false,
+               })
+               return { success: true, message: "Profile updated successfully.", user: userData }
+          } catch (err: unknown) {
+               const message = err instanceof Error ? err.message : "Failed to update profile"
+               set({
+                    loading: false,
+                    error: message,
+               })
+               return { success: false, message }
           }
      },
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Clock3, LogIn, LogOut } from "lucide-react"
+import { Clock3, Download, FileSpreadsheet, LogIn, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -50,6 +50,8 @@ export default function MeetingPage() {
   const isHost = user?.email === selectedMeeting?.host_email
   const minutesContent = minutesDraft ?? currentMinutes?.content ?? ""
   const sessionHref = meetingId ? `/meeting/${meetingId}/session` : "#"
+  const isEnded = selectedMeeting?.status === "ended"
+  const canEditMeetingRecords = isHost && !isEnded
   const scheduledStart = selectedMeeting?.scheduled_start
     ? new Date(selectedMeeting.scheduled_start).toLocaleString()
     : "Not scheduled"
@@ -155,6 +157,126 @@ export default function MeetingPage() {
     }
   }
 
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = fileName
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const buildExportFileBaseName = () => {
+    const meetingName = (selectedMeeting?.title || "meeting")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+
+    return `${meetingName || "meeting"}-records`
+  }
+
+  const handleExportCsv = () => {
+    if (!selectedMeeting) return
+
+    const rows = [
+      ["Section", "Field", "Value"],
+      ["Meeting", "Title", selectedMeeting.title],
+      ["Meeting", "Status", selectedMeeting.status],
+      ["Meeting", "Host", selectedMeeting.host_email],
+      ["Meeting", "Scheduled Start", scheduledStart],
+      ["Meeting", "Scheduled End", scheduledEnd],
+      ["Meeting", "Description", selectedMeeting.description || ""],
+      ...((selectedMeeting.agenda_items || []).flatMap((item) => [
+        ["Agenda", `Item ${item.order} Title`, item.title],
+        ["Agenda", `Item ${item.order} Description`, item.description || ""],
+        ["Agenda", `Item ${item.order} Minutes`, String(item.allocated_minutes)],
+      ])),
+      ["Minutes", "Content", currentMinutes?.content || selectedMeeting.minutes?.content || "No minutes recorded."],
+      ...attendanceHistory.flatMap((item) => [
+        ["Attendance", `${item.email} Status`, item.status],
+        ["Attendance", `${item.email} Verified`, item.isVerifiedMember ? "Yes" : "No"],
+        ["Attendance", `${item.email} Join Count`, String(item.joinCount)],
+        ["Attendance", `${item.email} Total Duration`, `${item.totalDurationMinutes} min`],
+        ["Attendance", `${item.email} First Joined`, formatHistoryDateTime(item.joinedAt)],
+        ["Attendance", `${item.email} Last Left`, formatHistoryDateTime(item.lastLeftAt)],
+      ]),
+    ]
+
+    const csvContent = rows
+      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+
+    downloadFile(csvContent, `${buildExportFileBaseName()}.csv`, "text/csv;charset=utf-8;")
+  }
+
+  const handleExportExcel = () => {
+    if (!selectedMeeting) return
+
+    const agendaRows = (selectedMeeting.agenda_items || [])
+      .map(
+        (item) => `
+          <tr>
+            <td>${item.order}</td>
+            <td>${item.title}</td>
+            <td>${item.description || ""}</td>
+            <td>${item.allocated_minutes}</td>
+          </tr>`
+      )
+      .join("")
+
+    const attendanceRows = attendanceHistory
+      .map(
+        (item) => `
+          <tr>
+            <td>${item.email}</td>
+            <td>${item.status}</td>
+            <td>${item.isVerifiedMember ? "Yes" : "No"}</td>
+            <td>${item.joinCount}</td>
+            <td>${item.totalDurationMinutes}</td>
+            <td>${formatHistoryDateTime(item.joinedAt)}</td>
+            <td>${formatHistoryDateTime(item.lastLeftAt)}</td>
+          </tr>`
+      )
+      .join("")
+
+    const excelContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head><meta charset="UTF-8" /></head>
+        <body>
+          <table>
+            <tr><th colspan="2">Meeting Summary</th></tr>
+            <tr><td>Title</td><td>${selectedMeeting.title}</td></tr>
+            <tr><td>Status</td><td>${selectedMeeting.status}</td></tr>
+            <tr><td>Host</td><td>${selectedMeeting.host_email}</td></tr>
+            <tr><td>Scheduled Start</td><td>${scheduledStart}</td></tr>
+            <tr><td>Scheduled End</td><td>${scheduledEnd}</td></tr>
+            <tr><td>Description</td><td>${selectedMeeting.description || ""}</td></tr>
+          </table>
+          <br />
+          <table border="1">
+            <tr><th colspan="4">Agenda</th></tr>
+            <tr><th>Order</th><th>Title</th><th>Description</th><th>Minutes</th></tr>
+            ${agendaRows || '<tr><td colspan="4">No agenda items recorded.</td></tr>'}
+          </table>
+          <br />
+          <table border="1">
+            <tr><th>Minutes</th></tr>
+            <tr><td>${(currentMinutes?.content || selectedMeeting.minutes?.content || "No minutes recorded.").replace(/\n/g, "<br/>")}</td></tr>
+          </table>
+          <br />
+          <table border="1">
+            <tr><th colspan="7">Attendance</th></tr>
+            <tr><th>Email</th><th>Status</th><th>Verified</th><th>Join Count</th><th>Total Duration</th><th>First Joined</th><th>Last Left</th></tr>
+            ${attendanceRows || '<tr><td colspan="7">No attendance history recorded.</td></tr>'}
+          </table>
+        </body>
+      </html>
+    `
+
+    downloadFile(excelContent, `${buildExportFileBaseName()}.xls`, "application/vnd.ms-excel;charset=utf-8;")
+  }
+
   return (
     <div className="min-h-screen bg-muted/40 p-4 md:p-6">
       <div className="mx-auto grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -188,14 +310,14 @@ export default function MeetingPage() {
             </div>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-1">
             <Card className="border-none bg-card p-5">
               <div className="mb-4">
                 <h2 className="text-xl font-semibold">Agenda</h2>
                 <p className="text-sm text-muted-foreground">Review and organize the topics and documents for this meeting.</p>
               </div>
 
-              {isHost && (
+              {canEditMeetingRecords && (
                 <form className="mb-5 space-y-3" onSubmit={handleAgendaAdd}>
                   <Input
                     value={agendaTitle}
@@ -238,7 +360,7 @@ export default function MeetingPage() {
                         )}
                         <p className="mt-2 text-xs text-muted-foreground">{item.allocated_minutes} minutes</p>
                       </div>
-                      {isHost && (
+                      {canEditMeetingRecords && (
                         <Button size="sm" variant="outline" onClick={() => handleAgendaDelete(item.id)}>
                           Remove
                         </Button>
@@ -252,10 +374,10 @@ export default function MeetingPage() {
             <Card className="border-none bg-card p-5">
               <div className="mb-4">
                 <h2 className="text-xl font-semibold">Meeting Minutes</h2>
-                <p className="text-sm text-muted-foreground">Capture decisions and action items.</p>
+                <p className="text-sm text-muted-foreground">Capture or review meeting decisions and action items.</p>
               </div>
 
-              {isHost ? (
+              {canEditMeetingRecords ? (
                 <form className="space-y-3" onSubmit={handleMinutesSave}>
                   <textarea
                     value={minutesContent}
@@ -269,7 +391,7 @@ export default function MeetingPage() {
                 </form>
               ) : (
                 <div className="rounded-xl border border-border p-4 text-sm text-foreground/80">
-                  {currentMinutes?.content || "Minutes have not been published yet."}
+                  {currentMinutes?.content || selectedMeeting?.minutes?.content || "No minutes were recorded for this meeting."}
                 </div>
               )}
             </Card>
@@ -277,11 +399,23 @@ export default function MeetingPage() {
 
           {selectedMeeting?.status === "ended" && (
             <Card className="border-none bg-card p-5">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold">Attendance History</h2>
-                <p className="text-sm text-muted-foreground">
+              <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Attendance History</h2>
+                  <p className="text-sm text-muted-foreground">
                   Full join and leave history for this meeting, including repeated entries for the same participant.
-                </p>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={handleExportCsv}>
+                    <Download className="mr-2 size-4" />
+                    Export CSV
+                  </Button>
+                  <Button onClick={handleExportExcel} className="bg-chart-3">
+                    <FileSpreadsheet className="mr-2 size-4" />
+                    Export Excel
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-4">

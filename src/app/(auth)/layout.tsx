@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
@@ -24,6 +25,19 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                     {/* LEFT SIDE (FORM) */}
                     <div className="flex items-center justify-center p-10">
                          <div className="w-full max-w-md space-y-6">
+                              <div className="flex justify-center md:justify-start">
+                                   <Link
+                                        href="/"
+                                        className="inline-flex flex-col rounded-xl px-1 py-1 transition hover:opacity-85"
+                                   >
+                                        <span className="text-xs font-semibold uppercase tracking-[0.28em] text-chart-4">
+                                             Meeting Hub
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                             Return to home
+                                        </span>
+                                   </Link>
+                              </div>
 
                               {children}
 

@@ -42,6 +42,18 @@ export const meetingServices = {
     }
   },
 
+  async createInstantMeeting(payload: {
+    title?: string
+    description?: string
+    group: string
+  }): Promise<ApiResponse<Meeting>> {
+    const response = await api.post<Meeting>(`${API_ENDPOINTS.USER_MEETINGS}instant/`, payload)
+    return {
+      status: response.status,
+      data: response.data,
+    }
+  },
+
   async startMeeting(meetingId: string) {
     const response = await api.post<{ detail: string }>(`${API_ENDPOINTS.USER_MEETINGS}${meetingId}/start/`)
     return {
