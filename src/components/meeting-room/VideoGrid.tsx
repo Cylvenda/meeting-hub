@@ -80,18 +80,10 @@ export function VideoGrid({ hostIdentity, currentUserIdentity }: VideoGridProps)
   const isSingleParticipant = participantCount <= 1
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-[32px] border border-gray-200 bg-gray-50 p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Live meeting room</h2>
-          <p className="text-sm text-gray-500">
-            {participants.length} participant{participants.length === 1 ? "" : "s"} in this session
-          </p>
-        </div>
-      </div>
+    <section className="flex h-full min-h-0 flex-1 flex-col rounded-md border border-border bg-card/70 p-3 shadow-sm sm:p-4">
 
       {featuredScreenShare ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row xl:items-stretch">
           <div className="min-h-0 flex-1">
             <ParticipantTile
               key={`${featuredScreenShare.participant.identity}-${featuredScreenShare.source}`}
@@ -107,10 +99,10 @@ export function VideoGrid({ hostIdentity, currentUserIdentity }: VideoGridProps)
           {filmstripTrackRefs.length > 0 ? (
             <div className="flex w-full min-w-0 flex-col gap-3 xl:max-w-[20rem]">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Participants</h3>
-                <p className="text-xs text-gray-500">Screen sharing is active</p>
+                <h3 className="text-sm font-semibold text-foreground">Participants</h3>
+                <p className="text-xs text-muted-foreground">Screen sharing is active</p>
               </div>
-              <div className="grid min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:auto-rows-max xl:grid-cols-1">
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:auto-rows-fr xl:grid-cols-1">
                 {filmstripTrackRefs.map((trackRef) => (
                   <ParticipantTile
                     key={`${trackRef.participant.identity}-${trackRef.source}`}
@@ -127,7 +119,7 @@ export function VideoGrid({ hostIdentity, currentUserIdentity }: VideoGridProps)
           ) : null}
         </div>
       ) : (
-        <div className={["grid min-h-0 flex-1 gap-4", getGridClass(participantCount)].join(" ")}>
+        <div className={["grid min-h-0 flex-1 gap-3 sm:gap-4", getGridClass(participantCount)].join(" ")}>
           {sortedTrackRefs.map((trackRef) => (
             <ParticipantTile
               key={`${trackRef.participant.identity}-${trackRef.source}`}

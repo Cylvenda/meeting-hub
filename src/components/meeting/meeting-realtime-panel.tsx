@@ -143,7 +143,7 @@ export function MeetingRealtimePanel({
 
   if (meetingStatus !== "ongoing") {
     return (
-      <div className="flex min-h-[18rem] items-center justify-center rounded-[28px] border border-dashed border-gray-200 bg-white text-center text-sm text-gray-500 shadow-sm">
+      <div className="flex min-h-72 items-center justify-center rounded-[28px] border border-dashed border-gray-200 bg-white text-center text-sm text-gray-500 shadow-sm">
         Start the meeting to open the Live room.
       </div>
     )
@@ -151,8 +151,8 @@ export function MeetingRealtimePanel({
 
   if ((roomPhase === "connecting" || roomPhase === "reconnecting") && !canConnect) {
     return (
-      <div className={fullscreen ? "flex min-h-screen items-center justify-center bg-white p-6" : "rounded-[32px] border border-gray-200 bg-white p-6 shadow-sm"}>
-        <div className={fullscreen ? "w-full max-w-3xl rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-6 py-10 text-center shadow-sm" : "rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-6 py-10 text-center"}>
+      <div className={fullscreen ? "flex h-full min-h-full items-center justify-center bg-white p-6" : "rounded-[32px] border border-gray-200 bg-white p-6 shadow-sm"}>
+        <div className={fullscreen ? "w-full max-w-3xl rounded-[28px] border border-gray-100 bg-accent px-6 py-10 text-center shadow-sm" : "rounded-[28px] border border-gray-100 bg-accent px-6 py-10 text-center"}>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">LiveKit</p>
           <h2 className="mt-3 text-2xl font-semibold text-gray-900">
             {roomPhase === "reconnecting" ? "Reconnecting to meeting room" : "Connecting to meeting room"}
@@ -167,18 +167,18 @@ export function MeetingRealtimePanel({
 
   if (!canConnect || roomPhase === "setup") {
     return (
-      <div className={fullscreen ? "flex min-h-screen items-center justify-center bg-white p-6" : "rounded-[32px] border border-gray-200 bg-white p-3 shadow-sm"}>
-        <div className={fullscreen ? "w-full max-w-5xl rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4 shadow-sm" : "rounded-[28px] border border-gray-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4"}>
+      <div className={fullscreen ? "flex h-full min-h-full items-center justify-center bg-accent p-6 text-black dark:text-white" : "rounded-md border border-gray-200 bg-accent p-3 shadow-sm text-black dark:text-white " }>
+        <div className={fullscreen ? "w-full max-w-6xl rounded-md border border-gray-100 bg-accent p-4 shadow-sm" : "rounded-[28px] border border-gray-100 bg-accent"}>
           {roomPhase === "failed" && connectionMessage ? (
-            <div className="mb-4 rounded-[24px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
               {connectionMessage}
             </div>
           ) : null}
 
-          <div className="mb-4 rounded-[24px] border border-gray-200 bg-white px-5 py-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500">Device Check</p>
-            <h2 className="mt-2 text-2xl font-semibold text-gray-900">Prepare your camera and microphone</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+          <div className="mb-4 rounded-md border border-gray-200 bg-accent px-5 py-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] ">Device Check</p>
+            <h2 className="mt-2 text-2xl font-semibold ">Prepare your camera and microphone</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 ">
               Review your devices, confirm how you want to appear in the room, and then join the live meeting with a secure token.
             </p>
           </div>
@@ -214,7 +214,7 @@ export function MeetingRealtimePanel({
 
   return (
     <div
-      className={fullscreen ? "relative h-screen w-screen overflow-hidden bg-white" : "relative overflow-hidden rounded-[32px] border border-gray-200 bg-white shadow-sm"}
+      className={fullscreen ? "relative h-full w-full overflow-hidden bg-white" : "relative overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm"}
       data-lk-theme="default"
     >
       <LiveKitRoom
@@ -224,7 +224,7 @@ export function MeetingRealtimePanel({
         connect
         token={connection?.token}
         serverUrl={liveKitUrl}
-        className={fullscreen ? "h-screen w-screen" : "h-full w-full"}
+        className={fullscreen ? "h-full w-full" : "h-full w-full"}
         onConnected={() => {
           setConnectionMessage(null)
           setRoomPhase("connected")
@@ -263,7 +263,7 @@ export function MeetingRealtimePanel({
       {roomPhase === "connecting" || roomPhase === "reconnecting" ? (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/82 backdrop-blur-sm">
           <div className="rounded-2xl border border-white/10 bg-slate-900/90 p-6 text-center text-slate-100 shadow-2xl">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">LiveKit</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Live Room</p>
             <h3 className="mt-3 text-2xl font-semibold">
               {roomPhase === "reconnecting" ? "Reconnecting to the meeting" : "Connecting to the meeting"}
             </h3>
@@ -276,10 +276,10 @@ export function MeetingRealtimePanel({
 
       {roomPhase === "failed" ? (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/82 backdrop-blur-sm">
-          <div className="max-w-lg rounded-2xl border border-white/10 bg-slate-900/92 p-6 text-center text-slate-100 shadow-2xl">
+          <div className="max-w-lg rounded-2xl border border-white/10 bg-slate-900/92 p-6 text-center  shadow-2xl">
             <p className="text-xs uppercase tracking-[0.24em] text-amber-300">Connection Issue</p>
             <h3 className="mt-3 text-2xl font-semibold">The meeting room needs to reconnect</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
+            <p className="mt-3 text-sm leading-6 ">
               {connectionMessage || "The Live Room room disconnected unexpectedly."}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

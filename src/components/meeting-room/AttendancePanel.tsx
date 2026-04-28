@@ -39,7 +39,7 @@ export function AttendancePanel({ items }: AttendancePanelProps) {
                 <span
                   className={[
                     "rounded-full px-3 py-1 text-[11px] font-semibold",
-                    item.badge === "Host" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-700",
+                    item.badge === "Host" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200" : "bg-muted text-muted-foreground",
                   ].join(" ")}
                 >
                   {item.badge}
@@ -47,7 +47,7 @@ export function AttendancePanel({ items }: AttendancePanelProps) {
                 <span
                   className={[
                     "rounded-full px-3 py-1 text-[11px] font-semibold",
-                    item.status === "online" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600",
+                    item.status === "online" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200" : "bg-muted text-muted-foreground",
                   ].join(" ")}
                 >
                   {item.status}

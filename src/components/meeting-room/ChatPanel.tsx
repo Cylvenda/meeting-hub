@@ -48,16 +48,16 @@ export function ChatPanel({ messages, currentUserId, onSendMessage }: ChatPanelP
             )
           }
 
-          return (
-            <div key={message.id} className={isCurrentUser ? "flex justify-end" : "flex justify-start"}>
-              <div
-                className={[
-                  "max-w-[85%] rounded-3xl px-4 py-3 shadow-sm",
-                  isCurrentUser
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border bg-card text-card-foreground",
-                ].join(" ")}
-              >
+            return (
+              <div key={message.id} className={isCurrentUser ? "flex justify-end" : "flex justify-start"}>
+                <div
+                  className={[
+                    "max-w-[85%] rounded-3xl px-4 py-3 shadow-sm",
+                    isCurrentUser
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border bg-card text-card-foreground",
+                  ].join(" ")}
+                >
                 <div className="mb-1 flex items-center gap-2 text-xs">
                   <span className={isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}>
                     {message.senderName}

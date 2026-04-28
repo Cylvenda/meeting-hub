@@ -33,7 +33,7 @@ function formatUtcLabel(currentUtcIso: string) {
 
 export function TopBar({ title, connectionLabel, currentUtcIso, onLeave, actions }: TopBarProps) {
   return (
-    <header className="flex flex-col gap-4 border-b border-gray-200 bg-white/95 px-5 py-4 backdrop-blur lg:flex-row lg:items-center lg:justify-between">
+    <header className="flex flex-col gap-4 border-b border-gray-200 bg-accent px-5 py-4 backdrop-blur lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
           <ShieldCheck className="size-4 text-emerald-600" />
@@ -56,7 +56,6 @@ export function TopBar({ title, connectionLabel, currentUtcIso, onLeave, actions
 
         <Button
           type="button"
-          variant="destructive"
           size="lg"
           onClick={onLeave}
           className="rounded-2xl px-4"

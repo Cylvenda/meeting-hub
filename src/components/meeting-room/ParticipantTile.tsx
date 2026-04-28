@@ -39,20 +39,20 @@ export function ParticipantTile({
   return (
     <article
       className={[
-        "group relative overflow-hidden rounded-[28px] border bg-white shadow-sm transition-all",
+        "group relative overflow-hidden rounded-md border bg-card shadow-sm transition-all",
         isFilmstrip
-          ? "h-36 min-h-[9rem] border-gray-200 xl:h-40"
+          ? "h-36 min-h-36 border-border xl:h-full xl:min-h-0"
           : isStage
-            ? "h-full min-h-[24rem] border-amber-200"
+            ? "h-full min-h-0 border-primary/30"
             : isScreenShare
-              ? "min-h-[20rem] border-amber-200 lg:col-span-2"
+              ? "h-full min-h-0 border-primary/30 lg:col-span-2"
               : isSingleParticipant
-                ? "h-full min-h-[calc(100vh-21rem)] border-gray-200"
-                : "min-h-[15rem] border-gray-200",
+                ? "h-full min-h-0 border-border"
+                : "h-full min-h-0 border-border",
         isActiveSpeaker ? "ring-2 ring-emerald-300 shadow-md" : "",
       ].join(" ")}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800" />
+      <div className="absolute inset-0 bg-linear-to-br from-gray-950 via-gray-900 to-gray-800" />
 
       {showVideo ? (
         <VideoTrack
@@ -60,14 +60,14 @@ export function ParticipantTile({
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_rgba(17,24,39,0.95)_55%)]">
+        <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),rgba(17,24,39,0.95)_55%)]">
           <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-3xl font-semibold text-white backdrop-blur">
             {label.slice(0, 1).toUpperCase()}
           </div>
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/10 to-transparent" />
 
       <div className={["absolute left-4 top-4 flex flex-wrap items-center gap-2", isFilmstrip ? "right-4" : ""].join(" ")}>
         {isActiveSpeaker ? (

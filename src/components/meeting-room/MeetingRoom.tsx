@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import {
   RoomAudioRenderer,
   useConnectionState,
@@ -11,7 +11,9 @@ import {
   useRoomContext,
 } from "@livekit/components-react"
 import { PanelLeftClose, PanelRightClose, X } from "lucide-react"
+import { toast } from "react-toastify"
 import type { AgendaItem, AttendanceRecord, ParticipantSession } from "@/store/meeting/meeting.types"
+import { useMeetingStore } from "@/store/meeting/meeting.store"
 import { AgendaPanel } from "@/components/meeting-room/AgendaPanel"
 import { AttendancePanel } from "@/components/meeting-room/AttendancePanel"
 import { ChatPanel } from "@/components/meeting-room/ChatPanel"
@@ -28,6 +30,7 @@ import type {
 } from "@/components/meeting-room/types"
 
 type MeetingRoomProps = {
+  meetingId?: string
   meetingTitle: string
   agendaItems: AgendaItem[]
   attendanceRecords: AttendanceRecord[]
@@ -83,7 +86,7 @@ function PanelFrame({
   const CloseIcon = side === "left" ? PanelLeftClose : PanelRightClose
 
   return (
-    <aside className="flex h-full w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-sm lg:w-[22rem] xl:w-[24rem]">
+    <aside className="flex h-[22rem] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-sm md:h-[26rem] lg:h-full lg:w-[22rem] xl:w-[24rem]">
       <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-foreground">
@@ -104,6 +107,7 @@ function PanelFrame({
 }
 
 export function MeetingRoom({
+  meetingId,
   meetingTitle,
   agendaItems,
   attendanceRecords,
@@ -120,6 +124,8 @@ export function MeetingRoom({
   const room = useRoomContext()
   const participants = useParticipants()
   const { localParticipant } = useLocalParticipant()
+  const { saveMinutes } = useMeetingStore()
+  const [isSavingMinutes, startSavingMinutes] = useTransition()
   const [leftPanel, setLeftPanel] = useState<Extract<MeetingSidebarTab, "agenda" | "minutes"> | null>(null)
   const [rightPanel, setRightPanel] = useState<Extract<MeetingSidebarTab, "chat" | "attendance"> | null>(null)
   const [raisedHand, setRaisedHand] = useState(false)
@@ -136,6 +142,8 @@ export function MeetingRoom({
       kind: "system",
     },
   ])
+
+  const isHost = Boolean(currentUserId && hostIdentity && currentUserId === hostIdentity)
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -358,8 +366,25 @@ export function MeetingRoom({
           kind: "system",
         },
       ])
+    }
+  }
+
+  const handleSaveMinutes = async (content: string) => {
+    if (!meetingId || !isHost) {
       return
     }
+
+    startSavingMinutes(() => {
+      void (async () => {
+        const result = await saveMinutes(meetingId, { content })
+        if (result.success) {
+          toast.success(result.message)
+          return
+        }
+
+        toast.error(result.message)
+      })()
+    })
   }
 
   const handleLeave = async () => {
@@ -368,7 +393,7 @@ export function MeetingRoom({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-gray-900">
+    <div className="flex h-full min-h-0 flex-col bg-background">
       <TopBar
         title={meetingTitle}
         connectionLabel={connectionState}
@@ -377,14 +402,14 @@ export function MeetingRoom({
         onLeave={() => void handleLeave()}
       />
 
-      <div className="flex min-h-0 flex-1 gap-4 px-4 py-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-4 pb-2 pt-4 sm:pb-3 sm:pt-3 lg:flex-row lg:pt-4">
         {leftPanel ? (
           <PanelFrame
             side="left"
             title={leftPanel === "minutes" ? "Minutes Notes" : "Agenda"}
             description={
               leftPanel === "minutes"
-                ? "Keep the official notes visible while the conversation continues."
+                ? "Only the host can review and update the official meeting minutes from this panel."
                 : "Follow the current discussion without leaving the live room."
             }
             onClose={() => setLeftPanel(null)}
@@ -396,12 +421,18 @@ export function MeetingRoom({
                 onSelectItem={setSelectedAgendaItemId}
               />
             ) : (
-              <MinutesPanel content={minutesContent} />
+              <MinutesPanel
+                key={`${meetingId || "meeting"}:${minutesContent || ""}`}
+                content={minutesContent}
+                canEdit={isHost}
+                isSaving={isSavingMinutes}
+                onSave={handleSaveMinutes}
+              />
             )}
           </PanelFrame>
         ) : null}
 
-        <div className="min-w-0 flex-1">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <VideoGrid hostIdentity={hostIdentity} currentUserIdentity={currentUserId || localParticipant.identity} />
         </div>
 
@@ -432,12 +463,17 @@ export function MeetingRoom({
       <ControlBar
         raisedHand={raisedHand}
         isRecordingUiOnly={isRecordingUiOnly}
+        canAccessMinutes={isHost}
         activeDocumentsPanel={leftPanel}
         activePeoplePanel={rightPanel}
         onToggleRaisedHand={() => setRaisedHand((current) => !current)}
         onToggleRecordingUiOnly={() => setIsRecordingUiOnly((current) => !current)}
         onLeave={() => void handleLeave()}
         onOpenDocumentsPanel={(tab) => {
+          if (tab === "minutes" && !isHost) {
+            return
+          }
+
           setLeftPanel((current) => (current === tab ? null : tab))
         }}
         onOpenPeoplePanel={(tab) => {

@@ -28,7 +28,7 @@ export function AgendaPanel({ items, selectedItemId, onSelectItem }: AgendaPanel
               onClick={() => onSelectItem(item.id)}
               className={[
                 "block w-full rounded-3xl border p-4 text-left shadow-sm transition-colors",
-                isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-muted-foreground/30",
+                isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/40",
               ].join(" ")}
             >
               <div className="flex items-start justify-between gap-3">

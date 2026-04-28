@@ -121,11 +121,11 @@ export default function MeetingSessionPage() {
 
   const roomHeaderActions = (
     <>
-      <Button asChild variant="outline" size="lg" className="rounded-2xl px-4">
+      <Button asChild variant="outline" size="lg" className="rounded-md text-black dark:text-white">
         <Link href={detailsHref}>Meeting details</Link>
       </Button>
       {isHost && isMeetingOngoing ? (
-        <Button variant="destructive" size="lg" className="rounded-2xl px-4" onClick={handleEnd} disabled={loading}>
+        <Button  size="lg" className="rounded-md" onClick={handleEnd} disabled={loading}>
           End Meeting
         </Button>
       ) : null}
@@ -134,7 +134,7 @@ export default function MeetingSessionPage() {
 
   if (isMeetingOngoing) {
     return (
-      <div className="fixed inset-0 z-40 bg-white">
+      <div className="fixed inset-x-0 bottom-0 top-22 z-40 bg-accennt md:top-23">
         <MeetingRealtimePanel
           meetingId={meetingId}
           meetingTitle={selectedMeeting?.title}

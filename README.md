@@ -12,7 +12,7 @@ Implemented in the frontend today:
 - Group, profile, settings, and notifications pages
 - Meeting room page powered by LiveKit React components
 - Shared Axios client configured for the backend API
-- Form handling with React Hook Form and Zod validation
+- Form handling with React Hook Form and Zod validation 
 
 Current gaps:
 
