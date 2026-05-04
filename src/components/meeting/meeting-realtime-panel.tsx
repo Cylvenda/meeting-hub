@@ -38,6 +38,7 @@ type MeetingRealtimePanelProps = {
 }
 
 export function MeetingRealtimePanel({
+  meetingId,
   meetingTitle,
   meetingStatus,
   fullscreen = false,
@@ -77,9 +78,9 @@ export function MeetingRealtimePanel({
     () =>
       userEmail && userChoices.username !== userEmail
         ? {
-            ...userChoices,
-            username: userEmail,
-          }
+          ...userChoices,
+          username: userEmail,
+        }
         : userChoices,
     [userChoices, userEmail]
   )
@@ -88,8 +89,8 @@ export function MeetingRealtimePanel({
     () =>
       userChoices.audioEnabled
         ? {
-            deviceId: userChoices.audioDeviceId === "default" ? undefined : userChoices.audioDeviceId,
-          }
+          deviceId: userChoices.audioDeviceId === "default" ? undefined : userChoices.audioDeviceId,
+        }
         : false,
     [userChoices.audioDeviceId, userChoices.audioEnabled]
   )
@@ -98,8 +99,8 @@ export function MeetingRealtimePanel({
     () =>
       userChoices.videoEnabled
         ? {
-            deviceId: userChoices.videoDeviceId === "default" ? undefined : userChoices.videoDeviceId,
-          }
+          deviceId: userChoices.videoDeviceId === "default" ? undefined : userChoices.videoDeviceId,
+        }
         : false,
     [userChoices.videoDeviceId, userChoices.videoEnabled]
   )
@@ -167,7 +168,7 @@ export function MeetingRealtimePanel({
 
   if (!canConnect || roomPhase === "setup") {
     return (
-      <div className={fullscreen ? "flex h-full min-h-full items-center justify-center bg-accent p-6 text-black dark:text-white" : "rounded-md border border-gray-200 bg-accent p-3 shadow-sm text-black dark:text-white " }>
+      <div className={fullscreen ? "flex h-full min-h-full items-center justify-center bg-accent p-6 text-black dark:text-white" : "rounded-md border border-gray-200 bg-accent p-3 shadow-sm text-black dark:text-white "}>
         <div className={fullscreen ? "w-full max-w-6xl rounded-md border border-gray-100 bg-accent p-4 shadow-sm" : "rounded-[28px] border border-gray-100 bg-accent"}>
           {roomPhase === "failed" && connectionMessage ? (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
@@ -203,7 +204,7 @@ export function MeetingRealtimePanel({
 
               await requestToken(
                 "connecting",
-                "Requesting a secure access token for the LiveKit room..."
+                "Requesting a secure access token for the Live Room..."
               )
             }}
           />
@@ -244,6 +245,7 @@ export function MeetingRealtimePanel({
         }}
       >
         <MeetingRoom
+          meetingId={meetingId}
           meetingTitle={meetingTitle || "Meeting room"}
           agendaItems={agendaItems}
           minutesContent={minutesContent}

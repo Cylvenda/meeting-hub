@@ -28,7 +28,11 @@ const MeetingsList = () => {
                                         <>
                                              {/* DATE */}
                                              <div className="text-center text-sm">
-
+                                                  {new Date(m.scheduled_start).toLocaleDateString("en-US", {
+                                                       day: "numeric",
+                                                       month: "short",
+                                                       year: "numeric",
+                                                  })}
                                              </div>
 
 
@@ -56,11 +60,11 @@ const MeetingsList = () => {
                                                   <div className="flex flex-row items-center justify-center gap-5">
                                                        <p
                                                             className={`px-2 py-1 rounded-full text-xs text-center ${m.status === "ongoing"
-                                                                 ? "bg-green-100 text-green-600"
+                                                                 ? "bg-green-500/20 text-green-600 dark:bg-green-500/30 dark:text-green-400"
                                                                  : m.status === "ended"
-                                                                      ? "bg-red-100 text-red-600"
+                                                                      ? "bg-red-500/20 text-red-600 dark:bg-red-500/30 dark:text-red-400"
                                                                       : m.status === "cancelled"
-                                                                      ? "bg-muted text-muted-foreground"
+                                                                           ? "bg-muted text-muted-foreground"
                                                                            : "bg-chart-2/20 text-chart-5"
                                                                  }`}
                                                        >

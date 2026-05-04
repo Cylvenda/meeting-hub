@@ -13,6 +13,12 @@ export type MeetingChatMessage = {
 
 export type MeetingAgendaStatus = "Pending" | "Ongoing" | "Done"
 
+export type MeetingParticipantSignalState = {
+  raisedHand: boolean
+  reactionEmoji?: string | null
+  reactionAt?: string | null
+}
+
 export type MeetingAgendaItem = {
   id: string
   title: string

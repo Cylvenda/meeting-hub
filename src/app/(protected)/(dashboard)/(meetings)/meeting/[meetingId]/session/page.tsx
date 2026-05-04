@@ -108,7 +108,7 @@ export default function MeetingSessionPage() {
 
   const handleRoomConnected = async () => {
     if (!meetingId) return
-    toast.success("Connected to the LiveKit room.")
+    toast.success("Connected to the Live Room room.")
     await fetchParticipants(meetingId, { silent: true })
   }
 
@@ -116,7 +116,7 @@ export default function MeetingSessionPage() {
     if (!meetingId) return
     await fetchParticipants(meetingId, { silent: true })
     await fetchAttendance(meetingId, { silent: true })
-    toast.warning("Disconnected from the LiveKit room.")
+    toast.warning("Disconnected from the Live Room room.")
   }
 
   const roomHeaderActions = (
@@ -125,7 +125,7 @@ export default function MeetingSessionPage() {
         <Link href={detailsHref}>Meeting details</Link>
       </Button>
       {isHost && isMeetingOngoing ? (
-        <Button  size="lg" className="rounded-md" onClick={handleEnd} disabled={loading}>
+        <Button size="lg" className="rounded-md" onClick={handleEnd} disabled={loading}>
           End Meeting
         </Button>
       ) : null}
@@ -184,7 +184,7 @@ export default function MeetingSessionPage() {
 
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="outline">
-                  <Link href={detailsHref}>Back To Details</Link>
+                  <Link href={detailsHref}>Back to Meeting Details</Link>
                 </Button>
                 {isHost && selectedMeeting?.status === "scheduled" && (
                   <Button className="bg-chart-3" onClick={handleStart} disabled={loading}>

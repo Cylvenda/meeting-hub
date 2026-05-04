@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
 
      // Meetings
      USER_MEETINGS: "meetings/",
+     AGENDA_SECTIONS: "agenda-sections/",
      AGENDA_ITEMS: "agenda-items/",
      REALTIME: "realtime/",
 

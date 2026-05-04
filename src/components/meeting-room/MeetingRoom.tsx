@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import {
   RoomAudioRenderer,
   useConnectionState,
@@ -18,7 +18,8 @@ import { AgendaPanel } from "@/components/meeting-room/AgendaPanel"
 import { AttendancePanel } from "@/components/meeting-room/AttendancePanel"
 import { ChatPanel } from "@/components/meeting-room/ChatPanel"
 import { ControlBar } from "@/components/meeting-room/ControlBar"
-import { MinutesPanel } from "@/components/meeting-room/MinutesPanel"
+import { MinuteSectionsPanel } from "@/components/meeting/MinuteSectionsPanel"
+import { AgendaMinutesPanel } from "@/components/meeting-room/AgendaMinutesPanel"
 import { TopBar } from "@/components/meeting-room/TopBar"
 import { VideoGrid } from "@/components/meeting-room/VideoGrid"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ import type {
   MeetingAgendaItem,
   MeetingAttendanceItem,
   MeetingChatMessage,
+  MeetingParticipantSignalState,
   MeetingSidebarTab,
 } from "@/components/meeting-room/types"
 
@@ -48,7 +50,21 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function getAgendaStatus(index: number, total: number, selectedId: string | null, agendaId: string) {
+type MeetingSignalPayload =
+  | {
+      type: "hand"
+      senderId: string
+      raisedHand: boolean
+      createdAt: string
+    }
+  | {
+      type: "reaction"
+      senderId: string
+      emoji: string
+      createdAt: string
+    }
+
+function getAgendaStatus(index: number, total: number, selectedId: string | null | undefined, agendaId: string) {
   if (agendaId === selectedId) return "Ongoing"
   if (selectedId) return "Pending"
   if (index === 0) return "Ongoing"
@@ -86,7 +102,7 @@ function PanelFrame({
   const CloseIcon = side === "left" ? PanelLeftClose : PanelRightClose
 
   return (
-    <aside className="flex h-[22rem] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-sm md:h-[26rem] lg:h-full lg:w-[22rem] xl:w-[24rem]">
+    <aside className="flex h-[22rem] w-full flex-col overflow-hidden rounded-md border border-border bg-card shadow-sm md:h-[26rem] lg:h-full lg:w-[22rem] xl:w-[24rem]">
       <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-foreground">
@@ -128,10 +144,10 @@ export function MeetingRoom({
   const [isSavingMinutes, startSavingMinutes] = useTransition()
   const [leftPanel, setLeftPanel] = useState<Extract<MeetingSidebarTab, "agenda" | "minutes"> | null>(null)
   const [rightPanel, setRightPanel] = useState<Extract<MeetingSidebarTab, "chat" | "attendance"> | null>(null)
-  const [raisedHand, setRaisedHand] = useState(false)
-  const [isRecordingUiOnly, setIsRecordingUiOnly] = useState(false)
+  const [participantSignals, setParticipantSignals] = useState<Record<string, MeetingParticipantSignalState>>({})
   const [currentUtcIso, setCurrentUtcIso] = useState("")
   const [selectedAgendaItemId, setSelectedAgendaItemId] = useState<string | null>(null)
+  const reactionTimeoutsRef = useRef<Record<string, number>>({})
   const [chatMessages, setChatMessages] = useState<MeetingChatMessage[]>([
     {
       id: "meeting-room-system-welcome",
@@ -201,6 +217,59 @@ export function MeetingRoom({
   })
 
   const { send } = useDataChannel("chat")
+  useDataChannel("meeting-signals", (message) => {
+    try {
+      const decoded = JSON.parse(new TextDecoder().decode(message.payload)) as MeetingSignalPayload
+      if (!decoded.senderId) return
+
+      if (decoded.type === "hand") {
+        setParticipantSignals((current) => ({
+          ...current,
+          [decoded.senderId]: {
+            ...(current[decoded.senderId] || { raisedHand: false }),
+            raisedHand: decoded.raisedHand,
+          },
+        }))
+        return
+      }
+
+      if (decoded.type === "reaction" && decoded.emoji) {
+        setParticipantSignals((current) => ({
+          ...current,
+          [decoded.senderId]: {
+            ...(current[decoded.senderId] || { raisedHand: false }),
+            reactionEmoji: decoded.emoji,
+            reactionAt: decoded.createdAt,
+          },
+        }))
+
+        const existingTimeout = reactionTimeoutsRef.current[decoded.senderId]
+        if (existingTimeout) {
+          window.clearTimeout(existingTimeout)
+        }
+
+        reactionTimeoutsRef.current[decoded.senderId] = window.setTimeout(() => {
+          setParticipantSignals((current) => {
+            const participantSignal = current[decoded.senderId]
+            if (!participantSignal) return current
+
+            return {
+              ...current,
+              [decoded.senderId]: {
+                ...participantSignal,
+                reactionEmoji: null,
+                reactionAt: null,
+              },
+            }
+          })
+          delete reactionTimeoutsRef.current[decoded.senderId]
+        }, 4000)
+      }
+    } catch {
+      return
+    }
+  })
+  const { send: sendMeetingSignal } = useDataChannel("meeting-signals")
   const textEncoder = useMemo(() => new TextEncoder(), [])
 
   const chatSenderId = currentUserId || localParticipant.identity
@@ -209,13 +278,24 @@ export function MeetingRoom({
     localParticipant.name ||
     localParticipant.attributes?.email ||
     localParticipant.identity
+  const raisedHand = participantSignals[chatSenderId]?.raisedHand ?? false
+
+  useEffect(() => {
+    const reactionTimeouts = reactionTimeoutsRef.current
+
+    return () => {
+      Object.values(reactionTimeouts).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId)
+      })
+    }
+  }, [])
 
   const normalizedAgendaItems = useMemo<MeetingAgendaItem[]>(
     () =>
       agendaItems.map((item, index) => ({
         id: item.id,
         title: item.title,
-        description: item.description,
+        description: item.description || null,
         order: item.order,
         allocatedMinutes: item.allocated_minutes,
         status: getAgendaStatus(index, agendaItems.length, selectedAgendaItemId ?? agendaItems[0]?.id ?? null, item.id),
@@ -392,6 +472,91 @@ export function MeetingRoom({
     await onLeaveRequested()
   }
 
+  const handleToggleRaisedHand = () => {
+    const nextRaisedHand = !raisedHand
+
+    setParticipantSignals((current) => ({
+      ...current,
+      [chatSenderId]: {
+        ...(current[chatSenderId] || { raisedHand: false }),
+        raisedHand: nextRaisedHand,
+      },
+    }))
+
+    void sendMeetingSignal(
+      textEncoder.encode(
+        JSON.stringify({
+          type: "hand",
+          senderId: chatSenderId,
+          raisedHand: nextRaisedHand,
+          createdAt: new Date().toISOString(),
+        } satisfies MeetingSignalPayload)
+      ),
+      {
+        topic: "meeting-signals",
+        reliable: true,
+      }
+    ).catch(() => {
+      toast.error("Failed to share your hand raise with the room.")
+    })
+  }
+
+  const handleSendReaction = (emoji: string) => {
+    const createdAt = new Date().toISOString()
+
+    setParticipantSignals((current) => ({
+      ...current,
+      [chatSenderId]: {
+        ...(current[chatSenderId] || { raisedHand: false }),
+        reactionEmoji: emoji,
+        reactionAt: createdAt,
+      },
+    }))
+
+    const existingTimeout = reactionTimeoutsRef.current[chatSenderId]
+    if (existingTimeout) {
+      window.clearTimeout(existingTimeout)
+    }
+
+    reactionTimeoutsRef.current[chatSenderId] = window.setTimeout(() => {
+      setParticipantSignals((current) => {
+        const participantSignal = current[chatSenderId]
+        if (!participantSignal) return current
+
+        return {
+          ...current,
+          [chatSenderId]: {
+            ...participantSignal,
+            reactionEmoji: null,
+            reactionAt: null,
+          },
+        }
+      })
+      delete reactionTimeoutsRef.current[chatSenderId]
+    }, 4000)
+
+    void sendMeetingSignal(
+      textEncoder.encode(
+        JSON.stringify({
+          type: "reaction",
+          senderId: chatSenderId,
+          emoji,
+          createdAt,
+        } satisfies MeetingSignalPayload)
+      ),
+      {
+        topic: "meeting-signals",
+        reliable: true,
+      }
+    ).catch(() => {
+      toast.error("Failed to share your reaction with the room.")
+    })
+
+    toast.success(`${emoji} Reaction sent`, {
+      autoClose: 1500,
+    })
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <TopBar
@@ -406,10 +571,10 @@ export function MeetingRoom({
         {leftPanel ? (
           <PanelFrame
             side="left"
-            title={leftPanel === "minutes" ? "Minutes Notes" : "Agenda"}
+            title={leftPanel === "minutes" ? "Meeting Minutes" : "Agenda"}
             description={
               leftPanel === "minutes"
-                ? "Only the host can review and update the official meeting minutes from this panel."
+                ? "Host can manage minute sections, mark sections as done, and add notes during the meeting."
                 : "Follow the current discussion without leaving the live room."
             }
             onClose={() => setLeftPanel(null)}
@@ -421,19 +586,23 @@ export function MeetingRoom({
                 onSelectItem={setSelectedAgendaItemId}
               />
             ) : (
-              <MinutesPanel
-                key={`${meetingId || "meeting"}:${minutesContent || ""}`}
-                content={minutesContent}
-                canEdit={isHost}
-                isSaving={isSavingMinutes}
-                onSave={handleSaveMinutes}
+              <AgendaMinutesPanel
+                meetingId={meetingId!}
+                agendaItems={agendaItems}
+                isHost={isHost}
+                onAgendaItemSelect={setSelectedAgendaItemId}
+                selectedAgendaItemId={activeAgendaItemId}
               />
             )}
           </PanelFrame>
         ) : null}
 
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <VideoGrid hostIdentity={hostIdentity} currentUserIdentity={currentUserId || localParticipant.identity} />
+          <VideoGrid
+            hostIdentity={hostIdentity}
+            currentUserIdentity={currentUserId || localParticipant.identity}
+            participantSignals={participantSignals}
+          />
         </div>
 
         {rightPanel ? (
@@ -462,12 +631,11 @@ export function MeetingRoom({
 
       <ControlBar
         raisedHand={raisedHand}
-        isRecordingUiOnly={isRecordingUiOnly}
         canAccessMinutes={isHost}
         activeDocumentsPanel={leftPanel}
         activePeoplePanel={rightPanel}
-        onToggleRaisedHand={() => setRaisedHand((current) => !current)}
-        onToggleRecordingUiOnly={() => setIsRecordingUiOnly((current) => !current)}
+        onToggleRaisedHand={handleToggleRaisedHand}
+        onSendReaction={handleSendReaction}
         onLeave={() => void handleLeave()}
         onOpenDocumentsPanel={(tab) => {
           if (tab === "minutes" && !isHost) {

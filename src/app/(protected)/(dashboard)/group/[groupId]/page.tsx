@@ -2,7 +2,7 @@
 
 import GroupHeader from "@/components/group-layout/GroupHeader"
 import MeetingInProgress from "@/components/group-layout/MeetingInProgress"
-import MeetingsList from "@/components/group-layout/MeetinsList"
+import MeetingsList from "@/components/group-layout/MeetingsList"
 import MembersList from "@/components/group-layout/MembersList"
 import OverviewCards from "@/components/group-layout/OverviewCards"
 import { useGroupStore } from "@/store/group/groupUser.store"

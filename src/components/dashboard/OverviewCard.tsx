@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { FC, ReactNode } from "react";
 
 interface OverviewCardProps {
@@ -15,12 +14,16 @@ const OverviewCard: FC<OverviewCardProps> = ({ title, description, status, count
      return (
           <div className="cursor-pointer rounded-2xl border border-border bg-card p-4 transition-all duration-100 hover:border-primary hover:shadow-sm">
                <div className="flex justify-between">
-                    <Button size="icon-lg" className="text-sm bg-chart-2 p-0.5 rounded-sm">{icons}</Button>
-                    <Button size="lg" className="rounded-sm bg-green-200 p text-sm text-green-700 dark:bg-green-500/20 dark:text-green-300">{status}</Button>
+                    <div className="w-10 h-10 bg-chart-2/15 p-2 rounded-lg flex items-center justify-center text-chart-3">
+                         {icons}
+                    </div>
+                    <div className="p-3 rounded-full bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300 text-xs font-medium">
+                         {status}
+                    </div>
                </div>
-               <p className="text-3xl font-bold mt-1 p-1">{count}</p>
-               <p className="text-2xl font-heading p-1">{title}</p>
-               <p className="text-sm text-muted-foreground">{description}</p>
+               <p className="text-3xl font-bold mt-3">{count}</p>
+               <p className="text-lg font-semibold mt-1">{title}</p>
+               <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
      );
 };

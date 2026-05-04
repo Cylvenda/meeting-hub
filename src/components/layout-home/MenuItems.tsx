@@ -33,14 +33,21 @@ const MenuItems = ({ isMobile = false }: MenuItemsProps) => {
                               <div className='flex gap-2 p-2' ><Element /> {item.label} </div>
                          </Link>
                     ) : (
-                         <Link
+                         <Button
                               key={index}
-                              href={item.href}
-                              className='hover:bg-chart-2'
-                              aria-label={item.label}
+                              asChild
+                              variant="default"
+                              size="icon-lg"
+                              className="rounded-md shadow-sm"
                          >
-                              <Button className='bg-chart-3' size={"icon-lg"}><Element /></Button>
-                         </Link>
+                              <Link
+                                   href={item.href}
+                                   aria-label={item.label}
+                                   title={item.label}
+                              >
+                                   <Element />
+                              </Link>
+                         </Button>
                     )
                })}
           </>

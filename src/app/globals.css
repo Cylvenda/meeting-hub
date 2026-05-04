@@ -135,6 +135,56 @@ body {
   min-height: 100vh;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) color-mix(in oklab, var(--primary) 12%, white);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--primary) 10%, white);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--primary) 10%, white);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 88%, black);
+}
+
+.app-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) color-mix(in oklab, var(--primary) 12%, white);
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.app-scrollbar::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--primary) 10%, white);
+  border-radius: 999px;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--primary) 10%, white);
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 88%, black);
+}
+
 [data-lk-theme="default"] {
   --lk-bg: #0f172a;
   --lk-fg: #f8fafc;

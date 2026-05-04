@@ -47,9 +47,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="w-full max-w-6xl space-y-6 p-6 md:p-10">
-      <Card className="border-none bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.98),rgba(247,244,241,0.98))] shadow-sm">
-        <CardHeader>
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 md:p-10">
+      <Card className="border-none bg-accent shadow-sm">
+         <CardHeader>
           <CardTitle className="text-3xl">Profile</CardTitle>
           <CardDescription>
             Update the identity details other members will see across groups, meetings, and invitations.

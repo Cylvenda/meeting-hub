@@ -1,8 +1,9 @@
 "use client"
 
 import { VideoTrack, isTrackReference, type TrackReferenceOrPlaceholder } from "@livekit/components-react"
-import { Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react"
+import { Hand, Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react"
 import { Track } from "livekit-client"
+import type { MeetingParticipantSignalState } from "@/components/meeting-room/types"
 
 type ParticipantTileProps = {
   trackRef: TrackReferenceOrPlaceholder
@@ -11,6 +12,7 @@ type ParticipantTileProps = {
   isCurrentUser: boolean
   isSingleParticipant: boolean
   layout?: "grid" | "stage" | "filmstrip"
+  participantSignal?: MeetingParticipantSignalState
 }
 
 function getParticipantLabel(trackRef: TrackReferenceOrPlaceholder) {
@@ -28,6 +30,7 @@ export function ParticipantTile({
   isCurrentUser,
   isSingleParticipant,
   layout = "grid",
+  participantSignal,
 }: ParticipantTileProps) {
   const participant = trackRef.participant
   const isScreenShare = trackRef.source === Track.Source.ScreenShare
@@ -35,6 +38,8 @@ export function ParticipantTile({
   const label = getParticipantLabel(trackRef)
   const isFilmstrip = layout === "filmstrip"
   const isStage = layout === "stage"
+  const raisedHand = participantSignal?.raisedHand ?? false
+  const reactionEmoji = participantSignal?.reactionEmoji
 
   return (
     <article
@@ -76,7 +81,7 @@ export function ParticipantTile({
           </span>
         ) : null}
         {isScreenShare ? (
-          <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-gray-900">
+          <span className="rounded-full bg-white/90 dark:bg-gray-800/90 px-3 py-1 text-[11px] font-semibold text-gray-900 dark:text-gray-100">
             Screen share
           </span>
         ) : null}
@@ -85,7 +90,21 @@ export function ParticipantTile({
             Host
           </span>
         ) : null}
+        {raisedHand ? (
+          <span className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground">
+            <Hand className="size-3" />
+            Hand raised
+          </span>
+        ) : null}
       </div>
+
+      {reactionEmoji ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="rounded-full bg-black/35 px-5 py-3 text-5xl shadow-lg backdrop-blur-md">
+            {reactionEmoji}
+          </div>
+        </div>
+      ) : null}
 
       <div className={["absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4", isFilmstrip ? "p-3" : ""].join(" ")}>
         <div className="min-w-0">

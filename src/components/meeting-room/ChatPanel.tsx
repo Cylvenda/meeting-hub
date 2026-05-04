@@ -34,30 +34,30 @@ export function ChatPanel({ messages, currentUserId, onSendMessage }: ChatPanelP
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+    <div className="flex h-full min-h-0 flex-col rounded-md">
+      <div className="app-scrollbar flex-1 space-y-4 overflow-y-auto px-1 py-2">
         {orderedMessages.map((message) => {
           const isCurrentUser = message.senderId === currentUserId
           const isSystem = message.kind === "system"
 
           if (isSystem) {
             return (
-              <div key={message.id} className="rounded-2xl border border-dashed border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+              <div key={message.id} className="rounded-md border border-dashed border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                 {message.text}
               </div>
             )
           }
 
-            return (
-              <div key={message.id} className={isCurrentUser ? "flex justify-end" : "flex justify-start"}>
-                <div
-                  className={[
-                    "max-w-[85%] rounded-3xl px-4 py-3 shadow-sm",
-                    isCurrentUser
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-border bg-card text-card-foreground",
-                  ].join(" ")}
-                >
+          return (
+            <div key={message.id} className={isCurrentUser ? "flex justify-end" : "flex justify-start"}>
+              <div
+                className={[
+                  "max-w-[85%] rounded-md px-4 py-3 shadow-sm",
+                  isCurrentUser
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-card text-card-foreground",
+                ].join(" ")}
+              >
                 <div className="mb-1 flex items-center gap-2 text-xs">
                   <span className={isCurrentUser ? "text-primary-foreground/80" : "text-muted-foreground"}>
                     {message.senderName}
@@ -74,16 +74,16 @@ export function ChatPanel({ messages, currentUserId, onSendMessage }: ChatPanelP
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-border p-4">
-        <div className="flex items-end gap-3 rounded-[28px] border border-border bg-background p-2 shadow-sm">
+        <div className="flex items-end gap-3 rounded-md border border-primary bg-background p-2 shadow-sm">
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Write a message..."
-            className="min-h-12 flex-1 resize-none rounded-2xl border-0 bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="app-scrollbar min-h-12 flex-1 resize-none rounded-md border-0 bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
           <Button
             type="submit"
-            className="h-11 rounded-2xl px-4"
+            className="h-11 rounded-md px-4"
             disabled={!draft.trim()}
           >
             <SendHorizonal className="size-4" />

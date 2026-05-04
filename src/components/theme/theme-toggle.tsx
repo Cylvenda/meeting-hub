@@ -31,7 +31,7 @@ export default function ThemeToggle({ className, compact = false, showLabel = fa
       variant="outline"
       size={compact ? "icon" : "lg"}
       className={cn(
-        "shrink-0 rounded-full border-border/70 bg-background/75 text-foreground shadow-sm backdrop-blur hover:bg-accent hover:text-accent-foreground",
+        "shrink-0 rounded-md border-border/70 bg-background/75 text-foreground shadow-sm backdrop-blur hover:bg-accent hover:text-accent-foreground",
         compact ? "px-0" : "px-4",
         className
       )}

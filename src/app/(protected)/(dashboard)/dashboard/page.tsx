@@ -51,7 +51,7 @@ const Page = () => {
                description: "New Group Invitations",
                status: "New",
                count: invitations.length,
-               icons: <TvMinimalPlayIcon />
+               icons: <Calendar />
           },
           {
                title: "Total Meetings",

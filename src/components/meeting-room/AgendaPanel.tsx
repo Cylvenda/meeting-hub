@@ -9,15 +9,15 @@ type AgendaPanelProps = {
 }
 
 function getStatusClass(status: MeetingAgendaItem["status"]) {
-  if (status === "Done") return "bg-emerald-100 text-emerald-700"
-  if (status === "Ongoing") return "bg-amber-100 text-amber-800"
-  return "bg-gray-100 text-gray-600"
+  if (status === "Done") return "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-300"
+  if (status === "Ongoing") return "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-300"
+  return "bg-gray-500/20 text-gray-600 dark:bg-gray-500/30 dark:text-gray-300"
 }
 
 export function AgendaPanel({ items, selectedItemId, onSelectItem }: AgendaPanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+    <div className="flex h-full min-h-0 flex-col rounded-md">
+      <div className="app-scrollbar flex-1 space-y-3 overflow-y-auto px-1 py-2">
         {items.map((item) => {
           const isActive = item.id === selectedItemId
 
@@ -27,7 +27,7 @@ export function AgendaPanel({ items, selectedItemId, onSelectItem }: AgendaPanel
               type="button"
               onClick={() => onSelectItem(item.id)}
               className={[
-                "block w-full rounded-3xl border p-4 text-left shadow-sm transition-colors",
+                "block w-full rounded-md border p-4 text-left shadow-sm transition-colors",
                 isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/40",
               ].join(" ")}
             >
@@ -48,7 +48,7 @@ export function AgendaPanel({ items, selectedItemId, onSelectItem }: AgendaPanel
 
                 <span
                   className={[
-                    "shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold",
+                    "shrink-0 rounded-md px-3 py-1 text-[11px] font-semibold",
                     isActive ? "bg-white/15 text-white" : getStatusClass(item.status),
                   ].join(" ")}
                 >

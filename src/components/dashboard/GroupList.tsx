@@ -47,6 +47,20 @@ const GroupList = ({ groups }: GroupListProps) => {
     toast.error(result.message)
   }
 
+  if (loading && groups.length === 0) {
+    return (
+      <Card className="h-fit w-full border-none rounded-md">
+        <div className="w-full p-3 md:p-6 rounded-2xl shadow-sm">
+          <div className="animate-pulse space-y-3">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <>
       <Card className="h-fit w-full border-none rounded-md flex flex-col md:flex-row justify-between">

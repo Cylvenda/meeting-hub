@@ -21,10 +21,10 @@ function formatJoinTime(value: string | null, status: MeetingAttendanceItem["sta
 
 export function AttendancePanel({ items }: AttendancePanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+    <div className="flex h-full min-h-0 flex-col rounded-md">
+      <div className="app-scrollbar flex-1 space-y-3 overflow-y-auto px-1 py-2">
         {items.map((item) => (
-          <div key={item.id} className="rounded-3xl border border-border bg-card p-4 shadow-sm">
+          <div key={item.id} className="rounded-md border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-card-foreground">

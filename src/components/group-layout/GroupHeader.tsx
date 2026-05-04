@@ -1,7 +1,7 @@
 "use client"
 
 import Link from 'next/link'
-import { Users, Play, CalendarPlus2 } from 'lucide-react'
+import { Users, Play, CalendarPlus2, ArrowLeft } from 'lucide-react'
 import { Button } from '../ui/button'
 import { useGroupStore } from '@/store/group/groupUser.store'
 import { formatUTCDate } from '@/hooks/formatted-date'
@@ -19,8 +19,9 @@ export default function GroupHeader() {
      const [inviteMessage, setInviteMessage] = useState("")
      const [meetingTitle, setMeetingTitle] = useState("")
      const [meetingDescription, setMeetingDescription] = useState("")
-     const [meetingStart, setMeetingStart] = useState("")
-     const [meetingEnd, setMeetingEnd] = useState("")
+     const [meetingDate, setMeetingDate] = useState("")
+     const [meetingStartTime, setMeetingStartTime] = useState("")
+     const [meetingEndTime, setMeetingEndTime] = useState("")
      const [instantTitle, setInstantTitle] = useState("")
      const [instantDescription, setInstantDescription] = useState("")
      const router = useRouter()
@@ -73,20 +74,33 @@ export default function GroupHeader() {
                return
           }
 
+          // Validate required fields
+          if (!meetingDate || !meetingStartTime) {
+               toast.error("Date and start time are required.")
+               return
+          }
+
+          // Combine date and time to create datetime strings
+          const startDateTime = new Date(`${meetingDate}T${meetingStartTime}`).toISOString()
+          const endDateTime = meetingEndTime
+               ? new Date(`${meetingDate}T${meetingEndTime}`).toISOString()
+               : undefined
+
           const result = await createMeeting({
                title: meetingTitle.trim(),
                description: meetingDescription.trim(),
                group: selectedGroup.id,
-               scheduled_start: new Date(meetingStart).toISOString(),
-               scheduled_end: meetingEnd ? new Date(meetingEnd).toISOString() : undefined,
+               scheduled_start: startDateTime,
+               scheduled_end: endDateTime,
           })
 
           if (result.success) {
                toast.success(result.message)
                setMeetingTitle("")
                setMeetingDescription("")
-               setMeetingStart("")
-               setMeetingEnd("")
+               setMeetingDate("")
+               setMeetingStartTime("")
+               setMeetingEndTime("")
                setIsScheduleOpen(false)
                return
           }
@@ -120,17 +134,24 @@ export default function GroupHeader() {
           toast.error(result.message)
      }
 
-     return (
-          <>
-               <div className="flex flex-col justify-between rounded-2xl bg-card p-4 shadow md:flex-row md:items-center">
-                    <div>
-                         <h1 className="text-2xl font-bold">{selectedGroup?.name}</h1>
-                         <p className="text-sm text-muted-foreground">
-                              {selectedGroup?.is_private ? "Private" : "Public"} Group • {memberCount} Members •
-                              Created {formatUTCDate(selectedGroup?.created_at || "")}</p>
-                    </div>
+return (
+           <>
+                <div className="flex flex-col justify-between rounded-2xl bg-card p-4 shadow md:flex-row md:items-center">
+                     <div className="flex items-center gap-3">
+                          <Link href="/dashboard">
+                               <Button variant="ghost" size="icon">
+                                    <ArrowLeft className="w-5 h-5" />
+                               </Button>
+                          </Link>
+                          <div>
+                               <h1 className="text-2xl font-bold">{selectedGroup?.name}</h1>
+                               <p className="text-sm text-muted-foreground">
+                                    {selectedGroup?.is_private ? "Private" : "Public"} Group • {memberCount} Members •
+                                    Created {formatUTCDate(selectedGroup?.created_at || "")}</p>
+                          </div>
+                     </div>
                     <div className="flex gap-3 mt-3 md:mt-0">
-                              <Button
+                         <Button
                               className="bg-chart-3"
                               onClick={() => setIsInviteOpen(true)}
                               disabled={!selectedGroup?.id}
@@ -295,26 +316,38 @@ export default function GroupHeader() {
                                         />
                                    </div>
 
+                                   <div>
+                                        <label htmlFor="meeting-date" className="mb-1 block text-sm font-medium">Meeting Date</label>
+                                        <input
+                                             id="meeting-date"
+                                             type="date"
+                                             value={meetingDate}
+                                             onChange={(event) => setMeetingDate(event.target.value)}
+                                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-chart-3"
+                                             required
+                                        />
+                                   </div>
+
                                    <div className="grid gap-3 md:grid-cols-2">
                                         <div>
-                                             <label htmlFor="meeting-start" className="mb-1 block text-sm font-medium">Start time</label>
+                                             <label htmlFor="meeting-start-time" className="mb-1 block text-sm font-medium">Start Time</label>
                                              <input
-                                                  id="meeting-start"
-                                                  type="datetime-local"
-                                                  value={meetingStart}
-                                                  onChange={(event) => setMeetingStart(event.target.value)}
+                                                  id="meeting-start-time"
+                                                  type="time"
+                                                  value={meetingStartTime}
+                                                  onChange={(event) => setMeetingStartTime(event.target.value)}
                                                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-chart-3"
                                                   required
                                              />
                                         </div>
 
                                         <div>
-                                             <label htmlFor="meeting-end" className="mb-1 block text-sm font-medium">End time</label>
+                                             <label htmlFor="meeting-end-time" className="mb-1 block text-sm font-medium">End Time (Optional)</label>
                                              <input
-                                                  id="meeting-end"
-                                                  type="datetime-local"
-                                                  value={meetingEnd}
-                                                  onChange={(event) => setMeetingEnd(event.target.value)}
+                                                  id="meeting-end-time"
+                                                  type="time"
+                                                  value={meetingEndTime}
+                                                  onChange={(event) => setMeetingEndTime(event.target.value)}
                                                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-chart-3"
                                              />
                                         </div>

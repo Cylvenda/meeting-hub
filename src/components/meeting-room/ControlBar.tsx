@@ -2,22 +2,30 @@
 
 import { useRef, useState } from "react"
 import { useLocalParticipant } from "@livekit/components-react"
-import { Disc3, FileText, Hand, MessageSquareText, Mic, MicOff, MonitorUp, PhoneOff, Users, Video, VideoOff } from "lucide-react"
+import { FileText, Hand, MessageSquareText, Mic, MicOff, MonitorUp, PhoneOff, SmilePlus, Users, Video, VideoOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import type { MeetingSidebarTab } from "@/components/meeting-room/types"
 
 type ControlBarProps = {
   raisedHand: boolean
-  isRecordingUiOnly: boolean
   canAccessMinutes: boolean
   activeDocumentsPanel: Extract<MeetingSidebarTab, "agenda" | "minutes"> | null
   activePeoplePanel: Extract<MeetingSidebarTab, "chat" | "attendance"> | null
   onToggleRaisedHand: () => void
-  onToggleRecordingUiOnly: () => void
+  onSendReaction: (emoji: string) => void
   onLeave: () => void
   onOpenDocumentsPanel: (tab: Extract<MeetingSidebarTab, "agenda" | "minutes">) => void
   onOpenPeoplePanel: (tab: Extract<MeetingSidebarTab, "chat" | "attendance">) => void
 }
+
+const REACTION_EMOJIS = ["👍", "👏", "🎉", "❤️", "😂", "😮"]
 
 function ControlButton({
   active,
@@ -60,7 +68,12 @@ function QuickPanelButton({
       variant={active ? "default" : "outline"}
       size="lg"
       onClick={onClick}
-      className="rounded-2xl border-border bg-card px-4 text-foreground shadow-sm hover:bg-muted"
+      className={[
+        "rounded-2xl px-4 shadow-sm",
+        active
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+          : "border-border bg-card text-foreground hover:bg-muted",
+      ].join(" ")}
     >
       {icon}
       {label}
@@ -70,12 +83,11 @@ function QuickPanelButton({
 
 export function ControlBar({
   raisedHand,
-  isRecordingUiOnly,
   canAccessMinutes,
   activeDocumentsPanel,
   activePeoplePanel,
   onToggleRaisedHand,
-  onToggleRecordingUiOnly,
+  onSendReaction,
   onLeave,
   onOpenDocumentsPanel,
   onOpenPeoplePanel,
@@ -160,10 +172,30 @@ export function ControlBar({
             {raisedHand ? "Hand raised" : "Raise hand"}
           </ControlButton>
 
-          <ControlButton type="button" active={isRecordingUiOnly} onClick={onToggleRecordingUiOnly}>
-            <Disc3 className="size-4" />
-            {isRecordingUiOnly ? "Recording" : "Record"}
-          </ControlButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <ControlButton type="button">
+                <SmilePlus className="size-4" />
+                Reactions
+              </ControlButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 rounded-xl">
+              <DropdownMenuLabel>Quick reactions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="flex flex-row flex-wrap gap-2 p-2">
+                {REACTION_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => onSendReaction(emoji)}
+                    className="rounded-lg px-3 py-2 text-xl transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex items-center gap-3">

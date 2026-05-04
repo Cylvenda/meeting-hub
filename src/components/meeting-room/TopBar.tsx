@@ -35,20 +35,20 @@ export function TopBar({ title, connectionLabel, currentUtcIso, onLeave, actions
   return (
     <header className="flex flex-col gap-4 border-b border-gray-200 bg-accent px-5 py-4 backdrop-blur lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
-          <ShieldCheck className="size-4 text-emerald-600" />
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+          <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
           Secure meeting session
         </div>
-        <h1 className="mt-2 truncate text-2xl font-semibold text-gray-900">{title}</h1>
+        <h1 className="mt-2 truncate text-2xl font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-700 shadow-sm">
-          <Radio className="size-4 text-emerald-600" />
+        <div className="flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 shadow-sm">
+          <Radio className="size-4 text-emerald-600 dark:text-emerald-400" />
           {connectionLabel}
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-700 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 shadow-sm">
           {formatUtcLabel(currentUtcIso)}
         </div>
 

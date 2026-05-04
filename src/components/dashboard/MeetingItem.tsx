@@ -16,9 +16,9 @@ const MeetingItem: FC<MeetingItemProps> = ({ meeting }) => {
      const { groups } = useGroupStore()
      const statusClasses =
           meeting.status === "ongoing"
-               ? "bg-green-100 text-green-600"
+               ? "bg-green-500/20 text-green-600 dark:bg-green-500/30 dark:text-green-400"
                : meeting.status === "ended"
-                    ? "bg-red-100 text-red-700"
+                    ? "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-400"
                     : meeting.status === "cancelled"
                          ? "bg-muted text-muted-foreground"
                          : "bg-chart-2/20 text-chart-5";

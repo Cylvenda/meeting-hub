@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Clock3, Download, FileSpreadsheet, LogIn, LogOut } from "lucide-react"
+import { Calendar, Clock, Users, ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { AgendaMinutesHistory } from "@/components/meeting/AgendaMinutesHistory"
 import { useMeetingStore } from "@/store/meeting/meeting.store"
 import { useAuthUserStore } from "@/store/auth/userAuth.store"
 import { toast } from "react-toastify"
@@ -20,20 +21,18 @@ export default function MeetingPage() {
     selectedMeeting,
     attendance,
     participants,
-    currentMinutes,
     loading,
     fetchMeetingById,
     fetchAttendance,
     fetchParticipants,
-    saveMinutes,
     addAgendaItem,
     removeAgendaItem,
+    startMeeting,
   } = useMeetingStore()
 
-  const [minutesDraft, setMinutesDraft] = useState<string | null>(null)
   const [agendaTitle, setAgendaTitle] = useState("")
   const [agendaDescription, setAgendaDescription] = useState("")
-  const [agendaMinutes, setAgendaMinutes] = useState("10")
+  const [showAgendaForm, setShowAgendaForm] = useState(false)
 
   useEffect(() => {
     if (!meetingId) return
@@ -45,19 +44,60 @@ export default function MeetingPage() {
     }
 
     void load()
-  }, [meetingId, fetchAttendance, fetchMeetingById, fetchParticipants])
+  }, [meetingId, fetchMeetingById, fetchAttendance, fetchParticipants])
 
   const isHost = user?.email === selectedMeeting?.host_email
-  const minutesContent = minutesDraft ?? currentMinutes?.content ?? ""
   const sessionHref = meetingId ? `/meeting/${meetingId}/session` : "#"
-  const isEnded = selectedMeeting?.status === "ended"
-  const canEditMeetingRecords = isHost && !isEnded
+  const canCreateAgenda = isHost
+
   const scheduledStart = selectedMeeting?.scheduled_start
-    ? new Date(selectedMeeting.scheduled_start).toLocaleString()
+    ? new Date(selectedMeeting.scheduled_start).toLocaleString("en-US", {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
     : "Not scheduled"
-  const scheduledEnd = selectedMeeting?.scheduled_end
-    ? new Date(selectedMeeting.scheduled_end).toLocaleString()
-    : "No end time"
+
+  const handleAgendaAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!meetingId || !agendaTitle.trim()) return
+
+    try {
+      await addAgendaItem({
+        meeting: meetingId!,
+        title: agendaTitle.trim(),
+        description: agendaDescription.trim() || undefined,
+        allocated_minutes: 10,
+        order: (selectedMeeting?.agenda_items?.length || 0) + 1,
+      })
+      setAgendaTitle("")
+      setAgendaDescription("")
+      setShowAgendaForm(false)
+      toast.success("Agenda item added")
+    } catch (error: unknown) {
+      toast.error("Failed to add agenda item")
+    }
+  }
+
+  const handleAgendaDelete = async (itemId: string) => {
+    if (!meetingId) return
+
+    try {
+      await removeAgendaItem(itemId)
+      toast.success("Agenda item removed")
+    } catch (error: unknown) {
+      toast.error("Failed to remove agenda item")
+    }
+  }
+
+  const handleStartMeeting = async () => {
+    if (!meetingId) return
+
+    // Navigate to session page for device testing
+    window.location.href = `/meeting/${meetingId}/session`
+  }
 
   const attendanceHistory = useMemo(() => {
     const sessionsByUser = new Map<string, ParticipantSession[]>()
@@ -74,475 +114,457 @@ export default function MeetingPage() {
           (left, right) => new Date(right.joined_at).getTime() - new Date(left.joined_at).getTime()
         )
 
-        return {
+        const mappedRecord = {
           id: record.user,
           email: record.user_email,
-          joinedAt: record.first_joined_at,
-          lastLeftAt: record.last_left_at,
+          joinedAt: record.first_joined_at || (userSessions.length > 0 ? userSessions[0].joined_at : null),
+          lastLeftAt: record.last_left_at || (userSessions.length > 0 ? userSessions[userSessions.length - 1].left_at : null),
           totalDurationMinutes: record.total_duration_minutes,
           status: record.status,
           isVerifiedMember: record.is_verified_member,
           joinCount: userSessions.length,
           sessions: userSessions,
         }
+
+        return mappedRecord
       })
       .sort((left, right) => {
         if (left.totalDurationMinutes !== right.totalDurationMinutes) {
           return right.totalDurationMinutes - left.totalDurationMinutes
         }
-
         return left.email.localeCompare(right.email)
       })
   }, [attendance, participants])
 
   const formatHistoryDateTime = (value: string | null) => {
-    if (!value) {
-      return "Not available"
-    }
-
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(value))
-  }
-
-  const handleMinutesSave = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!meetingId) return
-
-    const result = await saveMinutes(meetingId, {
-      content: minutesContent,
-      approved: false,
-    })
-
-    if (result.success) {
-      setMinutesDraft(minutesContent)
-      toast.success(result.message)
-    } else {
-      toast.error(result.message)
+    if (!value) return "Not recorded"
+    try {
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return "Invalid date"
+      return date.toLocaleString()
+    } catch (error) {
+      return "Date error"
     }
   }
 
-  const handleAgendaAdd = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!meetingId || !selectedMeeting) return
-
-    const result = await addAgendaItem({
-      meeting: selectedMeeting.id,
-      title: agendaTitle.trim(),
-      description: agendaDescription.trim(),
-      order: (selectedMeeting.agenda_items?.length || 0) + 1,
-      allocated_minutes: Number(agendaMinutes) || 0,
-    })
-
-    if (result.success) {
-      toast.success(result.message)
-      setAgendaTitle("")
-      setAgendaDescription("")
-      setAgendaMinutes("10")
-      return
-    }
-
-    toast.error(result.message)
-  }
-
-  const handleAgendaDelete = async (agendaItemId: string) => {
-    const result = await removeAgendaItem(agendaItemId)
-    if (result.success) {
-      toast.success(result.message)
-    } else {
-      toast.error(result.message)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ongoing": return "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300"
+      case "ended": return "bg-gray-500/20 text-gray-700 dark:bg-gray-500/30 dark:text-gray-300"
+      case "cancelled": return "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-300"
+      default: return "bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-300"
     }
   }
 
-  const downloadFile = (content: string, fileName: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = fileName
-    anchor.click()
-    URL.revokeObjectURL(url)
+  const getActionButton = () => {
+    if (!meetingId) return null
+
+    switch (selectedMeeting?.status) {
+      case "ongoing":
+        return (
+          <Button asChild>
+            <Link href={sessionHref}>Join Meeting</Link>
+          </Button>
+        )
+      case "scheduled":
+        // Show Start Meeting button for hosts, Not Started for others
+        if (isHost) {
+          return (
+            <Button
+              onClick={handleStartMeeting}
+            >
+              Start Meeting
+            </Button>
+          )
+        }
+        return <Button disabled>Not Started</Button>
+      case "ended":
+        return <Button disabled>Meeting Ended</Button>
+      default:
+        return <Button disabled>Open Session</Button>
+    }
   }
 
-  const buildExportFileBaseName = () => {
-    const meetingName = (selectedMeeting?.title || "meeting")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-
-    return `${meetingName || "meeting"}-records`
-  }
-
-  const handleExportCsv = () => {
-    if (!selectedMeeting) return
-
-    const rows = [
-      ["Section", "Field", "Value"],
-      ["Meeting", "Title", selectedMeeting.title],
-      ["Meeting", "Status", selectedMeeting.status],
-      ["Meeting", "Host", selectedMeeting.host_email],
-      ["Meeting", "Scheduled Start", scheduledStart],
-      ["Meeting", "Scheduled End", scheduledEnd],
-      ["Meeting", "Description", selectedMeeting.description || ""],
-      ...((selectedMeeting.agenda_items || []).flatMap((item) => [
-        ["Agenda", `Item ${item.order} Title`, item.title],
-        ["Agenda", `Item ${item.order} Description`, item.description || ""],
-        ["Agenda", `Item ${item.order} Minutes`, String(item.allocated_minutes)],
-      ])),
-      ["Minutes", "Content", currentMinutes?.content || selectedMeeting.minutes?.content || "No minutes recorded."],
-      ...attendanceHistory.flatMap((item) => [
-        ["Attendance", `${item.email} Status`, item.status],
-        ["Attendance", `${item.email} Verified`, item.isVerifiedMember ? "Yes" : "No"],
-        ["Attendance", `${item.email} Join Count`, String(item.joinCount)],
-        ["Attendance", `${item.email} Total Duration`, `${item.totalDurationMinutes} min`],
-        ["Attendance", `${item.email} First Joined`, formatHistoryDateTime(item.joinedAt)],
-        ["Attendance", `${item.email} Last Left`, formatHistoryDateTime(item.lastLeftAt)],
-      ]),
-    ]
-
-    const csvContent = rows
-      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
-      .join("\n")
-
-    downloadFile(csvContent, `${buildExportFileBaseName()}.csv`, "text/csv;charset=utf-8;")
-  }
-
-  const handleExportExcel = () => {
-    if (!selectedMeeting) return
-
-    const agendaRows = (selectedMeeting.agenda_items || [])
-      .map(
-        (item) => `
-          <tr>
-            <td>${item.order}</td>
-            <td>${item.title}</td>
-            <td>${item.description || ""}</td>
-            <td>${item.allocated_minutes}</td>
-          </tr>`
-      )
-      .join("")
-
-    const attendanceRows = attendanceHistory
-      .map(
-        (item) => `
-          <tr>
-            <td>${item.email}</td>
-            <td>${item.status}</td>
-            <td>${item.isVerifiedMember ? "Yes" : "No"}</td>
-            <td>${item.joinCount}</td>
-            <td>${item.totalDurationMinutes}</td>
-            <td>${formatHistoryDateTime(item.joinedAt)}</td>
-            <td>${formatHistoryDateTime(item.lastLeftAt)}</td>
-          </tr>`
-      )
-      .join("")
-
-    const excelContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head><meta charset="UTF-8" /></head>
-        <body>
-          <table>
-            <tr><th colspan="2">Meeting Summary</th></tr>
-            <tr><td>Title</td><td>${selectedMeeting.title}</td></tr>
-            <tr><td>Status</td><td>${selectedMeeting.status}</td></tr>
-            <tr><td>Host</td><td>${selectedMeeting.host_email}</td></tr>
-            <tr><td>Scheduled Start</td><td>${scheduledStart}</td></tr>
-            <tr><td>Scheduled End</td><td>${scheduledEnd}</td></tr>
-            <tr><td>Description</td><td>${selectedMeeting.description || ""}</td></tr>
-          </table>
-          <br />
-          <table border="1">
-            <tr><th colspan="4">Agenda</th></tr>
-            <tr><th>Order</th><th>Title</th><th>Description</th><th>Minutes</th></tr>
-            ${agendaRows || '<tr><td colspan="4">No agenda items recorded.</td></tr>'}
-          </table>
-          <br />
-          <table border="1">
-            <tr><th>Minutes</th></tr>
-            <tr><td>${(currentMinutes?.content || selectedMeeting.minutes?.content || "No minutes recorded.").replace(/\n/g, "<br/>")}</td></tr>
-          </table>
-          <br />
-          <table border="1">
-            <tr><th colspan="7">Attendance</th></tr>
-            <tr><th>Email</th><th>Status</th><th>Verified</th><th>Join Count</th><th>Total Duration</th><th>First Joined</th><th>Last Left</th></tr>
-            ${attendanceRows || '<tr><td colspan="7">No attendance history recorded.</td></tr>'}
-          </table>
-        </body>
-      </html>
-    `
-
-    downloadFile(excelContent, `${buildExportFileBaseName()}.xls`, "application/vnd.ms-excel;charset=utf-8;")
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-gray-500 dark:text-gray-400">Loading meeting...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-muted/40 p-4 md:p-6">
-      <div className="mx-auto grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <Card className="border-none bg-card p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Meeting Details</p>
-                <h1 className="text-3xl font-bold">{selectedMeeting?.title || "Loading meeting..."}</h1>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Host: {selectedMeeting?.host_email || "Unknown"} • Status: {selectedMeeting?.status || "loading"}
-                </p>
-                {selectedMeeting?.description && (
-                  <p className="mt-3 text-sm text-foreground/80">{selectedMeeting.description}</p>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-900 border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Button asChild variant="ghost" className="text-muted-foreground hover:text-foreground">
+              <Link href={selectedMeeting?.group ? `/group/${selectedMeeting.group}` : "/home"} className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                {selectedMeeting?.group ? "Back to Group" : "Back"}
+              </Link>
+            </Button>
 
-              <div className="flex flex-wrap gap-2">
-                {meetingId ? (
-                  <Button asChild>
-                    <Link href={sessionHref}>
-                      {selectedMeeting?.status === "ongoing" ? "Join Session" : "Open Session"}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button disabled>
-                    Open Session
-                  </Button>
-                )}
+            {getActionButton()}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      {selectedMeeting?.status === "ended" ? (
+        // Ended Meeting Layout - Two Column
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Meeting Details and Minutes */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Meeting Header */}
+              <Card>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-3xl font-bold">
+                          {selectedMeeting?.title || "Meeting"}
+                        </h1>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedMeeting?.status || "")}`}>
+                          {selectedMeeting?.status || "Loading"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          <span>Host: {selectedMeeting?.host_email || "Unknown"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          <span>{scheduledStart}</span>
+                        </div>
+                      </div>
+
+                      {selectedMeeting?.description && (
+                        <p className="mt-4 leading-relaxed">
+                          {selectedMeeting.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Meeting Details */}
+              <Card>
+                <div className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">Meeting Details</h2>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Scheduled Start</p>
+                          <p className="text-sm text-muted-foreground">{scheduledStart}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Status</p>
+                          <p className="text-sm text-muted-foreground capitalize">{selectedMeeting?.status}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Users className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Host</p>
+                          <p className="text-sm text-muted-foreground">{selectedMeeting?.host_email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Actual Start</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedMeeting?.actual_start
+                              ? new Date(selectedMeeting.actual_start).toLocaleString()
+                              : "Not recorded"
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Agenda Section */}
+              <Card>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-1">Agenda</h2>
+                      <p className="text-sm text-muted-foreground">Meeting topics and discussion points</p>
+                    </div>
+                  </div>
+
+                  {/* Agenda Items */}
+                  <div className="space-y-3">
+                    {selectedMeeting?.agenda_items?.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No agenda items
+                      </div>
+                    ) : (
+                      selectedMeeting?.agenda_items?.map((item, index) => (
+                        <div key={item.id} className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="shrink-0 w-8 h-8 bg-blue-500/20 text-blue-600 dark:bg-blue-500/30 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium">{item.title}</h3>
+                            {item.description && (
+                              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                            )}
+                            <p className="mt-2 text-xs text-muted-foreground">{item.allocated_minutes} minutes allocated</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Meeting Minutes */}
+              <Card>
+                <div className="p-6">
+                  <AgendaMinutesHistory
+                    meetingId={meetingId!}
+                    agendaItems={selectedMeeting?.agenda_items || []}
+                    isHost={isHost}
+                  />
+                </div>
+              </Card>
+            </div>
+
+            {/* Right Column - Attendance */}
+            <div className="space-y-8">
+              <Card>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-1">Attendance</h2>
+                      <p className="text-sm text-muted-foreground">All participants</p>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {attendanceHistory.length} participants
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {attendanceHistory.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No attendance recorded
+                      </div>
+                    ) : (
+                      attendanceHistory.map((item) => (
+                        <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="font-medium">{item.email}</p>
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.isVerifiedMember ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" : "bg-gray-500/20 text-gray-700 dark:bg-gray-500/30 dark:text-gray-300"
+                                  }`}>
+                                  {item.isVerifiedMember ? "Verified" : "Guest"}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${item.status === "present" ? "bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300" :
+                                  item.status === "late" ? "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-300" :
+                                    item.status === "left_early" ? "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-300" :
+                                      "bg-gray-500/20 text-gray-700 dark:bg-gray-500/30 dark:text-gray-300"
+                                  }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Total Duration</p>
+                              <p className="font-medium">{item.totalDurationMinutes} min</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">First Joined</p>
+                              <p className="font-medium">{formatHistoryDateTime(item.joinedAt)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Last Left</p>
+                              <p className="font-medium">{formatHistoryDateTime(item.lastLeftAt)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Regular Meeting Layout - Single Column
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          {/* Meeting Header */}
+          <Card className="mb-8">
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold">
+                      {selectedMeeting?.title || "Meeting"}
+                    </h1>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedMeeting?.status || "")}`}>
+                      {selectedMeeting?.status || "Loading"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span>Host: {selectedMeeting?.host_email || "Unknown"}</span>
+                      {isHost && selectedMeeting?.status === "scheduled" && (
+                        <Button
+                          onClick={handleStartMeeting}
+                          className="ml-4 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+                          size="sm"
+                        >
+                          Start Meeting
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span>{scheduledStart}</span>
+                    </div>
+                  </div>
+
+                  {selectedMeeting?.description && (
+                    <p className="mt-4 leading-relaxed">
+                      {selectedMeeting.description}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-1">
-            <Card className="border-none bg-card p-5">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold">Agenda</h2>
-                <p className="text-sm text-muted-foreground">Review and organize the topics and documents for this meeting.</p>
+          {/* Agenda Section */}
+          <Card className="mb-8">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold mb-1">Agenda</h2>
+                  <p className="text-sm text-muted-foreground">Meeting topics and discussion points</p>
+                </div>
+
+                {canCreateAgenda && (
+                  <Button
+                    onClick={() => setShowAgendaForm(!showAgendaForm)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Item
+                  </Button>
+                )}
               </div>
 
-              {canEditMeetingRecords && (
-                <form className="mb-5 space-y-3" onSubmit={handleAgendaAdd}>
-                  <Input
-                    value={agendaTitle}
-                    onChange={(event) => setAgendaTitle(event.target.value)}
-                    placeholder="Agenda item title"
-                    required
-                  />
-                  <textarea
-                    value={agendaDescription}
-                    onChange={(event) => setAgendaDescription(event.target.value)}
-                    className="min-h-24 w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    placeholder="Agenda item description"
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    value={agendaMinutes}
-                    onChange={(event) => setAgendaMinutes(event.target.value)}
-                    placeholder="Allocated minutes"
-                  />
-                  <Button type="submit" disabled={loading}>
-                    Add Agenda Item
-                  </Button>
+              {/* Add Agenda Form */}
+              {showAgendaForm && canCreateAgenda && (
+                <form onSubmit={handleAgendaAdd} className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="space-y-4">
+                    <Input
+                      value={agendaTitle}
+                      onChange={(e) => setAgendaTitle(e.target.value)}
+                      placeholder="Agenda item title"
+                      required
+                    />
+                    <textarea
+                      value={agendaDescription}
+                      onChange={(e) => setAgendaDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      className="w-full min-h-20 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800 px-3 py-2 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button type="submit">Add Item</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowAgendaForm(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
                 </form>
               )}
 
+              {/* Agenda Items */}
               <div className="space-y-3">
-                {(selectedMeeting?.agenda_items || []).length === 0 && (
-                  <p className="text-sm text-muted-foreground">No agenda items have been added yet.</p>
-                )}
-                {(selectedMeeting?.agenda_items || []).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">
-                          {item.order}. {item.title}
-                        </p>
+                {selectedMeeting?.agenda_items?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No agenda items yet
+                  </div>
+                ) : (
+                  selectedMeeting?.agenda_items?.map((item, index) => (
+                    <div key={item.id} className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="shrink-0 w-8 h-8 bg-blue-500/20 text-blue-600 dark:bg-blue-500/30 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.title}</h3>
                         {item.description && (
                           <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
                         )}
-                        <p className="mt-2 text-xs text-muted-foreground">{item.allocated_minutes} minutes</p>
                       </div>
-                      {canEditMeetingRecords && (
-                        <Button size="sm" variant="outline" onClick={() => handleAgendaDelete(item.id)}>
-                          Remove
+                      {canCreateAgenda && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAgendaDelete(item.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="border-none bg-card p-5">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold">Meeting Minutes</h2>
-                <p className="text-sm text-muted-foreground">Capture or review meeting decisions and action items.</p>
-              </div>
-
-              {canEditMeetingRecords ? (
-                <form className="space-y-3" onSubmit={handleMinutesSave}>
-                  <textarea
-                    value={minutesContent}
-                    onChange={(event) => setMinutesDraft(event.target.value)}
-                    className="min-h-56 w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    placeholder="Write your meeting minutes here..."
-                  />
-                  <Button type="submit" disabled={loading}>
-                    Save Minutes
-                  </Button>
-                </form>
-              ) : (
-                <div className="rounded-xl border border-border p-4 text-sm text-foreground/80">
-                  {currentMinutes?.content || selectedMeeting?.minutes?.content || "No minutes were recorded for this meeting."}
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {selectedMeeting?.status === "ended" && (
-            <Card className="border-none bg-card p-5">
-              <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Attendance History</h2>
-                  <p className="text-sm text-muted-foreground">
-                  Full join and leave history for this meeting, including repeated entries for the same participant.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={handleExportCsv}>
-                    <Download className="mr-2 size-4" />
-                    Export CSV
-                  </Button>
-                  <Button onClick={handleExportExcel} className="bg-chart-3">
-                    <FileSpreadsheet className="mr-2 size-4" />
-                    Export Excel
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {attendanceHistory.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No attendance history was recorded for this meeting.</p>
-                ) : (
-                  attendanceHistory.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-border p-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <p className="font-medium">{item.email}</p>
-                          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                            <p>First joined: {formatHistoryDateTime(item.joinedAt)}</p>
-                            <p>Last left: {formatHistoryDateTime(item.lastLeftAt)}</p>
-                            <p>Join count: {item.joinCount}</p>
-                            <p>Total tracked attendance: {item.totalDurationMinutes} min</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                            {item.isVerifiedMember ? "Verified member" : "Guest"}
-                          </span>
-                          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize">
-                            {item.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 rounded-2xl bg-muted/60 p-3">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Join / Leave History
-                        </p>
-
-                        {item.sessions.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No session history recorded.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {item.sessions.map((session, index) => (
-                              <div key={session.id} className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="font-medium text-foreground">Session {item.sessions.length - index}</span>
-                                  <span>{session.left_at ? "Completed" : "Open session"}</span>
-                                </div>
-                                <div className="mt-2 space-y-1">
-                                  <p className="flex items-center gap-2">
-                                    <LogIn className="size-3.5 text-emerald-600" />
-                                    Joined {formatHistoryDateTime(session.joined_at)}
-                                  </p>
-                                  <p className="flex items-center gap-2">
-                                    <LogOut className="size-3.5 text-amber-600" />
-                                    {session.left_at ? `Left ${formatHistoryDateTime(session.left_at)}` : "No leave recorded"}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock3 className="size-3.5" />
-                        Total tracked attendance: {item.totalDurationMinutes} min
-                      </div>
                     </div>
                   ))
                 )}
               </div>
-            </Card>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <Card className="border-none bg-card p-5">
-            <h2 className="text-xl font-semibold">Overview</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Core information about this meeting before anyone joins the session.</p>
-
-            <div className="mt-4 space-y-4 text-sm text-foreground/80">
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Scheduled Start</p>
-                <p className="mt-2 font-medium">{scheduledStart}</p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Scheduled End</p>
-                <p className="mt-2 font-medium">{scheduledEnd}</p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Session Access</p>
-                <p className="mt-2">
-                  {selectedMeeting?.status === "ongoing"
-                    ? "The live room is active. Open the session page to join the call."
-                    : "Use the session page when you are ready to start or join the live meeting."}
-                </p>
-              </div>
             </div>
           </Card>
 
-          <Card className="border-none bg-card p-5">
-            <h2 className="text-xl font-semibold">Documents</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Use this page for planning materials, notes, and records of the meeting.</p>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl bg-muted p-4 text-sm text-foreground/80">
-                <p className="font-medium">Agenda items</p>
-                <p className="mt-1 text-muted-foreground">
-                  Keep the structure of the conversation here before or after the session.
-                </p>
+          {/* Quick Info */}
+          <Card>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Meeting Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Status</p>
+                    <p className="text-sm text-muted-foreground capitalize">{selectedMeeting?.status}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Host</p>
+                    <p className="text-sm text-muted-foreground">{selectedMeeting?.host_email}</p>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-xl bg-muted p-4 text-sm text-foreground/80">
-                <p className="font-medium">Minutes and action items</p>
-                <p className="mt-1 text-muted-foreground">
-                  Capture decisions here while the session happens, then return later for review.
-                </p>
-              </div>
-              {meetingId ? (
-                <Button asChild variant="outline">
-                  <Link href={sessionHref}>Go To Session Controls</Link>
-                </Button>
-              ) : (
-                <Button variant="outline" disabled>
-                  Go To Session Controls
-                </Button>
-              )}
             </div>
           </Card>
         </div>
-      </div>
+      )}
     </div>
   )
 }
