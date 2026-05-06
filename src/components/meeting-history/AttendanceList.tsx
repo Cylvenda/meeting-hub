@@ -97,6 +97,7 @@ export function AttendanceList({
 
         return {
           '#': index + 1,
+          'Name': record.user_name || '',
           'Email': record.user_email,
           'Status': getStatusText(record.status),
           'First Joined': formatDateTime(record.first_joined_at),
@@ -132,6 +133,7 @@ export function AttendanceList({
       // Set column widths
       const colWidths = [
         { wch: 5 },  // #
+        { wch: 25 }, // Name
         { wch: 30 }, // Email
         { wch: 12 }, // Status
         { wch: 20 }, // First Joined
@@ -172,6 +174,7 @@ export function AttendanceList({
     try {
       // Prepare CSV data
       const csvData = sortedAttendance.map((record) => ({
+        'Name': record.user_name || '',
         'Email': record.user_email,
         'Status': getStatusText(record.status),
         'First Joined': formatDateTime(record.first_joined_at),
@@ -187,6 +190,7 @@ export function AttendanceList({
 
       // Set column widths
       ws['!cols'] = [
+        { wch: 25 }, // Name
         { wch: 30 }, // Email
         { wch: 12 }, // Status
         { wch: 20 }, // First Joined
@@ -232,7 +236,9 @@ export function AttendanceList({
       return aStatusOrder - bStatusOrder
     }
 
-    return a.user_email.localeCompare(b.user_email)
+    const aName = a.user_name || a.user_email
+    const bName = b.user_name || b.user_email
+    return aName.localeCompare(bName)
   })
 
   const summaryStats = {
@@ -338,7 +344,8 @@ export function AttendanceList({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-medium">{record.user_email}</h4>
+                      <h4 className="font-medium">{record.user_name || record.user_email}</h4>
+                      {record.user_name && <span className="text-sm text-muted-foreground">{record.user_email}</span>}
                       <Badge className={getStatusColor(record.status)}>
                         <span className="flex items-center gap-1">
                           {getStatusIcon(record.status)}

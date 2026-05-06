@@ -331,7 +331,7 @@ export function MeetingRoom({
       const userSessions = sessionsByUser.get(record.user) || []
       items.set(record.user, {
         id: record.user,
-        name: getParticipantName(record.user, liveParticipant?.name, email),
+        name: getParticipantName(record.user, liveParticipant?.name, record.user_name || email),
         email,
         joinedAt: getLatestJoinedAt(userSessions) || record.first_joined_at,
         lastLeftAt: record.last_left_at,
@@ -355,10 +355,11 @@ export function MeetingRoom({
       const liveParticipant = liveParticipants.get(userId)
       const existing = items.get(userId)
       const email = liveParticipant?.email || firstSession.user_email
+      const userName = firstSession.user_name || email
 
       items.set(userId, {
         id: userId,
-        name: existing?.name || getParticipantName(userId, liveParticipant?.name, email),
+        name: existing?.name || getParticipantName(userId, liveParticipant?.name, userName),
         email,
         joinedAt: existing?.joinedAt || getLatestJoinedAt(userSessions),
         lastLeftAt:

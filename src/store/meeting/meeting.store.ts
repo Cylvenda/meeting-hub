@@ -215,11 +215,16 @@ export const useMeetingStore = create<MeetingState>((set) => ({
     try {
       const connection = await meetingServices.joinMeeting(meetingId)
       const participants = await meetingServices.getParticipants(meetingId).catch(() => null)
-      set({
+      
+      // Also silently fetch attendance so the Attendance tab updates to show the user as Present
+      const attendance = await meetingServices.getAttendance(meetingId).catch(() => null)
+
+      set((state) => ({
         realtimeConnection: connection.data,
         participants: participants?.data || [],
+        attendance: attendance?.data || state.attendance,
         loading: false,
-      })
+      }))
       return {
         success: true,
         message: "Realtime token issued successfully.",

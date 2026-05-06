@@ -32,6 +32,7 @@ export type AttendanceRecord = {
   meeting: string
   user: string
   user_email: string
+  user_name?: string
   first_joined_at: string | null
   last_left_at: string | null
   total_duration_minutes: number
@@ -43,6 +44,7 @@ export type ParticipantSession = {
   id: string
   user: string
   user_email: string
+  user_name?: string
   joined_at: string
   left_at: string | null
 }
